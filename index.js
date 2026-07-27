@@ -8,19 +8,30 @@ require('dotenv').config();
 const authMiddleware = require('./middlewares/authMiddleware');
 const authRoutes = require('./routes/authRoutes');
 const transacaoRoutes = require('./routes/transacaoRoutes');
-const categoriaRoutes = require('./routes/categoriaRoutes'); // <--- NOVO: Importa a rota de categorias
+const categoriaRoutes = require('./routes/categoriaRoutes');
 
 const app = express();
 
-app.use(cors());
+// Configuração explícita do CORS
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
 app.use(express.json());
+
+// Rota raiz para teste de conexão
+app.get('/', (req, res) => {
+  res.status(200).json({ status: 'OK', mensagem: 'API Financeira rodando com sucesso no Render!' });
+});
 
 // 2. ROTA PÚBLICA DE AUTENTICAÇÃO (Login / Cadastro)
 app.use('/api/auth', authRoutes);
 
 // 3. ROTAS PROTEGIDAS (Exigem o Token JWT para acessar)
 app.use('/api/transacoes', authMiddleware, transacaoRoutes);
-app.use('/api/categorias', authMiddleware, categoriaRoutes); // <--- NOVO: Registra a rota de categorias
+app.use('/api/categorias', authMiddleware, categoriaRoutes);
 
 // 4. TAREFA AGENDADA: Limpeza diária da lixeira (itens com mais de 6 meses)
 cron.schedule('0 0 * * *', async () => {
@@ -40,7 +51,7 @@ cron.schedule('0 0 * * *', async () => {
   }
 });
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
   console.log(`🚀 Servidor rodando na porta ${PORT}`);
 });
