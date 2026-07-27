@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistema Financeiro</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f4f6f9; color: #333; }
+    h1, h2, h3 { color: #2c3e50; margin-top: 0; }
+    
+    /* AUTENTICAÇÃO */
+    .auth-container { max-width: 400px; margin: 80px auto; background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    .auth-toggle { text-align: center; margin-top: 15px; font-size: 14px; cursor: pointer; color: #2980b9; text-decoration: underline; }
+
+    /* PAINEL PRINCIPAL */
+    #painelSistema { display: none; }
+    .header-actions { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .user-info { font-size: 14px; color: #555; }
+    
+    /* NAVEGAÇÃO POR ABAS */
+    .nav-tabs { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #ddd; padding-bottom: 10px; }
+    .tab-btn { background: #e0e0e0; color: #333; border: none; padding: 10px 20px; font-size: 15px; font-weight: bold; border-radius: 6px; cursor: pointer; transition: 0.2s; }
+    .tab-btn.active { background: #2c3e50; color: #fff; }
+    .tab-btn:hover:not(.active) { background: #d0d0d0; }
+
+    /* SEÇÕES DAS ABAS */
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* CARDS DE RESUMO */
+    .dashboard-resumo { display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap; }
+    .card-resumo { flex: 1; min-width: 200px; background: #fff; padding: 15px 20px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); border-left: 5px solid #ccc; position: relative; }
+    .card-resumo.receita { border-left-color: #27ae60; }
+    .card-resumo.despesa { border-left-color: #e74c3c; }
+    .card-resumo.saldo { border-left-color: #2980b9; }
+    
+    .card-header-resumo { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+    .card-resumo h3 { font-size: 14px; color: #7f8c8d; margin: 0; text-transform: uppercase; }
+    .card-resumo .valor { font-size: 22px; font-weight: bold; }
+
+    /* BOTÃO OCULTAR INDIVIDUAL DO CARD */
+    .btn-toggle-card {
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      font-size: 16px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      transition: background 0.2s;
+    }
+    .btn-toggle-card:hover {
+      background: #f0f0f0;
+    }
+
+    /* BARRA DE FILTRO DA COMPETÊNCIA */
+    .filtro-bar { background: #fff; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; align-items: center; gap: 15px; flex-wrap: wrap; box-shadow: 0 2px 6px rgba(0,0,0,0.05); }
+
+    .card { background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); max-width: 600px; margin: 0 auto; }
+    .card-full { background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); width: 100%; box-sizing: border-box; overflow-x: auto; }
+    
+    form { display: flex; flex-direction: column; gap: 12px; }
+    label { font-weight: bold; font-size: 14px; }
+    input, select, textarea, button { padding: 10px; font-size: 14px; border-radius: 4px; border: 1px solid #ccc; font-family: inherit; }
+    
+    button { background-color: #27ae60; color: white; border: none; font-weight: bold; cursor: pointer; transition: 0.2s; }
+    button:hover { background-color: #219150; }
+    
+    .btn-delete { background-color: #e74c3c; padding: 6px 12px; font-size: 12px; }
+    .btn-lixeira { background-color: #7f8c8d; }
+    .btn-sair { background-color: #c0392b; padding: 5px 10px; margin-left: 10px; }
+
+    /* TABELA E CABEÇALHO COM ORDENAÇÃO E FILTROS */
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; min-width: 700px; }
+    th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+    th { background-color: #2c3e50; color: white; vertical-align: top; user-select: none; }
+    
+    .th-header { display: flex; justify-content: space-between; align-items: center; cursor: pointer; gap: 5px; }
+    .th-header:hover { color: #3498db; }
+    .sort-icon { font-size: 12px; opacity: 0.7; }
+
+    /* CAMPOS DE FILTRO DENTRO DO TH */
+    .th-filter-input {
+      width: 100%;
+      margin-top: 6px;
+      padding: 4px 6px;
+      font-size: 12px;
+      border: 1px solid #bdc3c7;
+      border-radius: 3px;
+      box-sizing: border-box;
+      font-weight: normal;
+      background: #fff;
+      color: #333;
+    }
+
+    .RECEITA, .receita-txt { color: #27ae60; font-weight: bold; }
+    .DESPESA, .despesa-txt { color: #e74c3c; font-weight: bold; }
+
+    /* MODAL LIXEIRA */
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); justify-content: center; align-items: center; z-index: 1000; }
+    .modal-content { background: #fff; padding: 25px; border-radius: 8px; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; }
+
+    /* ADAPTAÇÃO MOBILE */
+    @media (max-width: 768px) {
+      body { padding: 10px; }
+      .header-actions { flex-direction: column; align-items: flex-start; gap: 10px; }
+      .user-info { width: 100%; display: flex; justify-content: space-between; align-items: center; }
+      .nav-tabs { flex-direction: column; gap: 6px; }
+      .tab-btn { width: 100%; text-align: center; padding: 12px; font-size: 16px; }
+      .dashboard-resumo { flex-direction: column; gap: 10px; }
+      .filtro-bar { flex-direction: column; align-items: stretch; gap: 10px; }
+      .filtro-bar select, .filtro-bar input { width: 100% !important; box-sizing: border-box; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- TELA DE AUTENTICAÇÃO -->
+  <div id="telaAuth" class="auth-container">
+    <h2 id="tituloAuth">Entrar no Sistema</h2>
+    <form id="formAuth">
+      <div id="campoNome" style="display: none;">
+        <label>Nome:</label>
+        <input type="text" id="authNome" placeholder="Seu nome completo">
+      </div>
+      <div>
+        <label>E-mail:</label>
+        <input type="email" id="authEmail" placeholder="seu@email.com" required>
+      </div>
+      <div>
+        <label>Senha:</label>
+        <input type="password" id="authSenha" placeholder="******" required>
+      </div>
+      <button type="submit" id="btnAuthSubmit">Entrar</button>
+    </form>
+    <div class="auth-toggle" onclick="alternarModoAuth()" id="textoToggle">
+      Não tem uma conta? Cadastre-se
+    </div>
+  </div>
+
+  <!-- PAINEL DO SISTEMA -->
+  <div id="painelSistema">
+    <div class="header-actions">
+      <h1>Sistema Financeiro</h1>
+      <div class="user-info">
+        Olá, <strong id="usuarioNome">-</strong>
+        <button class="btn-lixeira" onclick="abrirLixeira()">🗑️ Lixeira</button>
+        <button class="btn-sair" onclick="fazerLogout()">Sair</button>
+      </div>
+    </div>
+
+    <!-- ABAS DE NAVEGAÇÃO -->
+    <div class="nav-tabs">
+      <button class="tab-btn active" id="btnTabConsulta" onclick="trocarAba('consulta')">📊 Consultar Transações</button>
+      <button class="tab-btn" id="btnTabNovo" onclick="trocarAba('novo')">➕ Novo Lançamento</button>
+      <button class="tab-btn" id="btnTabCategorias" onclick="trocarAba('categorias')">🏷️ Categorias</button>
+    </div>
+
+    <!-- ABA 1: CONSULTAR TRANSAÇÕES -->
+    <div id="abaConsulta" class="tab-content active">
+      <!-- FILTRO MÊS/ANO DA COMPETÊNCIA -->
+      <div class="filtro-bar">
+        <label for="filtroMes">Mês:</label>
+        <select id="filtroMes" onchange="carregarTransacoes()">
+          <option value="1">Janeiro</option>
+          <option value="2">Fevereiro</option>
+          <option value="3">Março</option>
+          <option value="4">Abril</option>
+          <option value="5">Maio</option>
+          <option value="6">Junho</option>
+          <option value="7">Julho</option>
+          <option value="8">Agosto</option>
+          <option value="9">Setembro</option>
+          <option value="10">Outubro</option>
+          <option value="11">Novembro</option>
+          <option value="12">Dezembro</option>
+        </select>
+
+        <label for="filtroAno">Ano:</label>
+        <input type="number" id="filtroAno" style="width: 80px;" onchange="carregarTransacoes()">
+      </div>
+
+      <!-- CARDS DE RESUMO COM BOTÕES INDIVIDUAIS DE VISIBILIDADE -->
+      <div class="dashboard-resumo">
+        <!-- Card Receitas -->
+        <div class="card-resumo receita">
+          <div class="card-header-resumo">
+            <h3>Receitas do Mês</h3>
+            <button class="btn-toggle-card" onclick="alternarCardIndividual('receita')" title="Ocultar/Exibir Receitas">
+              <span id="icon-receita">👁️</span>
+            </button>
+          </div>
+          <div class="valor receita-txt" id="totalReceitas">R$ 0,00</div>
+        </div>
+
+        <!-- Card Despesas -->
+        <div class="card-resumo despesa">
+          <div class="card-header-resumo">
+            <h3>Despesas do Mês</h3>
+            <button class="btn-toggle-card" onclick="alternarCardIndividual('despesa')" title="Ocultar/Exibir Despesas">
+              <span id="icon-despesa">👁️</span>
+            </button>
+          </div>
+          <div class="valor despesa-txt" id="totalDespesas">R$ 0,00</div>
+        </div>
+
+        <!-- Card Saldo -->
+        <div class="card-resumo saldo">
+          <div class="card-header-resumo">
+            <h3>Saldo Mensal</h3>
+            <button class="btn-toggle-card" onclick="alternarCardIndividual('saldo')" title="Ocultar/Exibir Saldo">
+              <span id="icon-saldo">👁️</span>
+            </button>
+          </div>
+          <div class="valor" id="totalSaldo">R$ 0,00</div>
+        </div>
+      </div>
+
+      <!-- TABELA DE TRANSAÇÕES COM FILTROS E ORDENAÇÃO NAS COLUNAS -->
+      <div class="card-full">
+        <h2>Transações do Mês</h2>
+        <table>
+          <thead>
+            <tr>
+              <!-- Descrição -->
+              <th>
+                <div class="th-header" onclick="ordenarPor('descricao')">
+                  <span>Descrição</span>
+                  <span class="sort-icon" id="sort-descricao">↕</span>
+                </div>
+                <input type="text" class="th-filter-input" placeholder="Filtrar..." oninput="filtrarEProcessarTabela()" id="col-filter-descricao">
+              </th>
+              
+              <!-- Categoria -->
+              <th>
+                <div class="th-header" onclick="ordenarPor('categoria_nome')">
+                  <span>Categoria</span>
+                  <span class="sort-icon" id="sort-categoria_nome">↕</span>
+                </div>
+                <input type="text" class="th-filter-input" placeholder="Filtrar..." oninput="filtrarEProcessarTabela()" id="col-filter-categoria_nome">
+              </th>
+
+              <!-- Valor -->
+              <th>
+                <div class="th-header" onclick="ordenarPor('valor')">
+                  <span>Valor</span>
+                  <span class="sort-icon" id="sort-valor">↕</span>
+                </div>
+                <input type="text" class="th-filter-input" placeholder="Min/Valor..." oninput="filtrarEProcessarTabela()" id="col-filter-valor">
+              </th>
+
+              <!-- Data Lançamento -->
+              <th>
+                <div class="th-header" onclick="ordenarPor('data_lancamento')">
+                  <span>Data Lanç.</span>
+                  <span class="sort-icon" id="sort-data_lancamento">↕</span>
+                </div>
+                <input type="text" class="th-filter-input" placeholder="DD/MM/AAAA" oninput="filtrarEProcessarTabela()" id="col-filter-data_lancamento">
+              </th>
+
+              <!-- Mês/Ano Vencimento -->
+              <th>
+                <div class="th-header" onclick="ordenarPor('data_vencimento')">
+                  <span>Mês/Ano Venc.</span>
+                  <span class="sort-icon" id="sort-data_vencimento">↕</span>
+                </div>
+                <input type="text" class="th-filter-input" placeholder="MM/AAAA..." oninput="filtrarEProcessarTabela()" id="col-filter-data_vencimento">
+              </th>
+
+              <!-- Obs -->
+              <th>
+                <div class="th-header">
+                  <span>Obs.</span>
+                </div>
+                <input type="text" class="th-filter-input" placeholder="Filtrar..." oninput="filtrarEProcessarTabela()" id="col-filter-observacao">
+              </th>
+
+              <!-- Tipo -->
+              <th>
+                <div class="th-header" onclick="ordenarPor('tipo')">
+                  <span>Tipo</span>
+                  <span class="sort-icon" id="sort-tipo">↕</span>
+                </div>
+                <select class="th-filter-input" onchange="filtrarEProcessarTabela()" id="col-filter-tipo">
+                  <option value="">Todos</option>
+                  <option value="DESPESA">Despesa</option>
+                  <option value="RECEITA">Receita</option>
+                </select>
+              </th>
+
+              <!-- Ações -->
+              <th>
+                <div class="th-header">
+                  <span>Ações</span>
+                </div>
+              </th>
+            </tr>
+          </thead>
+          <tbody id="tabelaTransacoes"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ABA 2: NOVO LANÇAMENTO -->
+    <div id="abaNovo" class="tab-content">
+      <div class="card">
+        <h2>Cadastrar Nova Transação</h2>
+        <form id="formTransacao">
+          <div>
+            <label>Descrição:</label>
+            <input type="text" id="descricao" required placeholder="Ex: Mercado, Salário...">
+          </div>
+          <div>
+            <label>Categoria:</label>
+            <select id="categoria_id">
+              <option value="">Sem categoria</option>
+            </select>
+          </div>
+          <div>
+            <label>Valor (R$):</label>
+            <input type="number" step="0.01" id="valor" required placeholder="0.00">
+          </div>
+          <div>
+            <label>Tipo:</label>
+            <select id="tipo">
+              <option value="DESPESA">Despesa</option>
+              <option value="RECEITA">Receita</option>
+            </select>
+          </div>
+          
+          <div id="campoParcelas">
+            <label>Quantidade de Parcelas:</label>
+            <input type="number" id="parcelas" value="1" min="1" max="72">
+          </div>
+
+          <div>
+            <label>Data de Lançamento (Compra/Entrada):</label>
+            <input type="date" id="data_lancamento" required>
+          </div>
+
+          <div>
+            <label>Observação (Opcional):</label>
+            <textarea id="observacao" rows="2" placeholder="Detalhes adicionais, notas..."></textarea>
+          </div>
+
+          <button type="submit">Salvar Transação</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- ABA 3: CADASTRO DE CATEGORIAS -->
+    <div id="abaCategorias" class="tab-content">
+      <div class="card">
+        <h2>Gerenciar Categorias</h2>
+        <form id="formCategoria">
+          <div>
+            <label>Nome da Categoria:</label>
+            <input type="text" id="nomeCategoria" required placeholder="Ex: Casa, Carro, Cartão X...">
+          </div>
+          <button type="submit">Salvar Categoria</button>
+        </form>
+
+        <h3 style="margin-top: 25px;">Categorias Existentes</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Nome</th>
+            </tr>
+          </thead>
+          <tbody id="tabelaCategorias"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- MODAL LIXEIRA -->
+  <div id="modalLixeira" class="modal-overlay">
+    <div class="modal-content">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h2>🗑️ Itens Excluídos</h2>
+        <button onclick="fecharLixeira()" style="background:#95a5a6;">Fechar ✖</button>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Descrição</th>
+            <th>Valor</th>
+            <th>Data Exclusão</th>
+          </tr>
+        </thead>
+        <tbody id="tabelaLixeira"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = 'http://localhost:3000/api';
+    let modoCadastro = false;
+
+    // ESTADO GLOBAL DE DADOS DA TABELA E VISIBILIDADE INDIVIDUAL DOS CARDS
+    let transacoesBrutas = [];
+    let colunaOrdenacao = 'data_vencimento';
+    let direcaoOrdenacao = 'asc';
+    let totaisAtuais = { receitas: 0, despesas: 0, saldo: 0 };
+
+    // Configuração do estado de visibilidade por tipo
+    let visibilidadeCards = {
+      receita: localStorage.getItem('ocultar_receita') !== 'true',
+      despesa: localStorage.getItem('ocultar_despesa') !== 'true',
+      saldo: localStorage.getItem('ocultar_saldo') !== 'true'
+    };
+
+    const hoje = new Date();
+    document.getElementById('filtroMes').value = hoje.getMonth() + 1;
+    document.getElementById('filtroAno').value = hoje.getFullYear();
+    document.getElementById('data_lancamento').valueAsDate = hoje;
+
+    // GERENCIAMENTO DE ABAS
+    function trocarAba(nomeAba) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+
+      if (nomeAba === 'consulta') {
+        document.getElementById('abaConsulta').classList.add('active');
+        document.getElementById('btnTabConsulta').classList.add('active');
+        carregarTransacoes();
+      } else if (nomeAba === 'novo') {
+        document.getElementById('abaNovo').classList.add('active');
+        document.getElementById('btnTabNovo').classList.add('active');
+        carregarCategoriasSelect();
+      } else if (nomeAba === 'categorias') {
+        document.getElementById('abaCategorias').classList.add('active');
+        document.getElementById('btnTabCategorias').classList.add('active');
+        carregarCategoriasTabela();
+      }
+    }
+
+    function alternarModoAuth() {
+      modoCadastro = !modoCadastro;
+      document.getElementById('campoNome').style.display = modoCadastro ? 'block' : 'none';
+      document.getElementById('tituloAuth').innerText = modoCadastro ? 'Criar Conta' : 'Entrar no Sistema';
+      document.getElementById('btnAuthSubmit').innerText = modoCadastro ? 'Cadastrar' : 'Entrar';
+      document.getElementById('textoToggle').innerText = modoCadastro ? 'Já tem conta? Faça Login' : 'Não tem uma conta? Cadastre-se';
+    }
+
+    // AUTH
+    document.getElementById('formAuth').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('authEmail').value;
+      const senha = document.getElementById('authSenha').value;
+      const nome = document.getElementById('authNome').value;
+
+      const endpoint = modoCadastro ? `${API_BASE}/auth/cadastrar` : `${API_BASE}/auth/login`;
+      const bodyData = modoCadastro ? { nome, email, senha } : { email, senha };
+
+      try {
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(bodyData)
+        });
+        const data = await res.json();
+
+        if (!res.ok) return alert(data.erro || 'Erro ao autenticar');
+
+        if (modoCadastro) {
+          alert('Conta criada com sucesso! Faça login.');
+          alternarModoAuth();
+        } else {
+          localStorage.setItem('token', data.token);
+          localStorage.setItem('usuario', JSON.stringify(data.usuario));
+          verificarAutenticacao();
+        }
+      } catch (err) {
+        alert('Erro ao conectar com o servidor.');
+      }
+    });
+
+    function getAuthHeaders() {
+      const token = localStorage.getItem('token');
+      return {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      };
+    }
+
+    function verificarAutenticacao() {
+      const token = localStorage.getItem('token');
+      const usuario = JSON.parse(localStorage.getItem('usuario') || '{}');
+
+      if (token) {
+        document.getElementById('telaAuth').style.display = 'none';
+        document.getElementById('painelSistema').style.display = 'block';
+        document.getElementById('usuarioNome').innerText = usuario.nome || 'Usuário';
+        carregarTransacoes();
+        carregarCategoriasSelect();
+      } else {
+        document.getElementById('telaAuth').style.display = 'block';
+        document.getElementById('painelSistema').style.display = 'none';
+      }
+    }
+
+    function fazerLogout() {
+      localStorage.clear();
+      verificarAutenticacao();
+    }
+
+    // CONTROLE INDIVIDUAL DE VISIBILIDADE DOS CARDS
+    function alternarCardIndividual(tipo) {
+      visibilidadeCards[tipo] = !visibilidadeCards[tipo];
+      localStorage.setItem(`ocultar_${tipo}`, !visibilidadeCards[tipo]);
+      atualizarExibicaoTotais();
+    }
+
+    function atualizarExibicaoTotais() {
+      // Receitas
+      if (visibilidadeCards.receita) {
+        document.getElementById('totalReceitas').innerText = `R$ ${totaisAtuais.receitas.toFixed(2)}`;
+        document.getElementById('icon-receita').innerText = '👁️';
+      } else {
+        document.getElementById('totalReceitas').innerText = 'R$ ***';
+        document.getElementById('icon-receita').innerText = '🙈';
+      }
+
+      // Despesas
+      if (visibilidadeCards.despesa) {
+        document.getElementById('totalDespesas').innerText = `R$ ${totaisAtuais.despesas.toFixed(2)}`;
+        document.getElementById('icon-despesa').innerText = '👁️';
+      } else {
+        document.getElementById('totalDespesas').innerText = 'R$ ***';
+        document.getElementById('icon-despesa').innerText = '🙈';
+      }
+
+      // Saldo
+      if (visibilidadeCards.saldo) {
+        document.getElementById('totalSaldo').innerText = `R$ ${totaisAtuais.saldo.toFixed(2)}`;
+        document.getElementById('icon-saldo').innerText = '👁️';
+      } else {
+        document.getElementById('totalSaldo').innerText = 'R$ ***';
+        document.getElementById('icon-saldo').innerText = '🙈';
+      }
+    }
+
+    // LISTAR CATEGORIAS NO SELECT
+    async function carregarCategoriasSelect() {
+      try {
+        const res = await fetch(`${API_BASE}/categorias`, { headers: getAuthHeaders() });
+        const categorias = await res.json();
+
+        const select = document.getElementById('categoria_id');
+        select.innerHTML = '<option value="">Sem categoria</option>';
+
+        if (Array.isArray(categorias)) {
+          categorias.forEach(cat => {
+            select.innerHTML += `<option value="${cat.id}">${cat.nome}</option>`;
+          });
+        }
+      } catch (err) { console.error('Erro ao carregar select de categorias:', err); }
+    }
+
+    // LISTAR CATEGORIAS NA TABELA (ABA CATEGORIAS)
+    async function carregarCategoriasTabela() {
+      try {
+        const res = await fetch(`${API_BASE}/categorias`, { headers: getAuthHeaders() });
+        const categorias = await res.json();
+
+        const tbody = document.getElementById('tabelaCategorias');
+        tbody.innerHTML = '';
+
+        if (Array.isArray(categorias)) {
+          categorias.forEach(cat => {
+            tbody.innerHTML += `
+              <tr>
+                <td>${cat.id}</td>
+                <td>${cat.nome}</td>
+              </tr>
+            `;
+          });
+        }
+      } catch (err) { console.error('Erro ao carregar tabela de categorias:', err); }
+    }
+
+    // CADASTRAR CATEGORIA
+    document.getElementById('formCategoria').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const nome = document.getElementById('nomeCategoria').value;
+
+      const res = await fetch(`${API_BASE}/categorias`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ nome })
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        alert('Categoria criada com sucesso!');
+        document.getElementById('nomeCategoria').value = '';
+        carregarCategoriasTabela();
+      } else {
+        alert(data.erro || 'Erro ao criar categoria.');
+      }
+    });
+
+    // BUSCAR TRANSAÇÕES DO BACKEND
+    async function carregarTransacoes() {
+      const mes = document.getElementById('filtroMes').value;
+      const ano = document.getElementById('filtroAno').value;
+
+      try {
+        const res = await fetch(`${API_BASE}/transacoes?mes=${mes}&ano=${ano}`, { headers: getAuthHeaders() });
+        if (res.status === 401) return fazerLogout();
+        
+        const resposta = await res.json();
+        transacoesBrutas = resposta.transacoes || resposta;
+        totaisAtuais = resposta.totais || { receitas: 0, despesas: 0, saldo: 0 };
+
+        atualizarExibicaoTotais();
+        filtrarEProcessarTabela();
+      } catch (err) { console.error(err); }
+    }
+
+    // LÓGICA DE ORDENAÇÃO
+    function ordenarPor(coluna) {
+      if (colunaOrdenacao === coluna) {
+        direcaoOrdenacao = direcaoOrdenacao === 'asc' ? 'desc' : 'asc';
+      } else {
+        colunaOrdenacao = coluna;
+        direcaoOrdenacao = 'asc';
+      }
+      atualizarIconesOrdenacao();
+      filtrarEProcessarTabela();
+    }
+
+    function atualizarIconesOrdenacao() {
+      const colunas = ['descricao', 'categoria_nome', 'valor', 'data_lancamento', 'data_vencimento', 'tipo'];
+      colunas.forEach(col => {
+        const el = document.getElementById(`sort-${col}`);
+        if (el) {
+          if (col === colunaOrdenacao) {
+            el.innerText = direcaoOrdenacao === 'asc' ? '▲' : '▼';
+          } else {
+            el.innerText = '↕';
+          }
+        }
+      });
+    }
+
+    // LÓGICA DE FILTRAGEM POR COLUNA E RENDERIZAÇÃO
+    function filtrarEProcessarTabela() {
+      const filterDesc = (document.getElementById('col-filter-descricao').value || '').toLowerCase();
+      const filterCat = (document.getElementById('col-filter-categoria_nome').value || '').toLowerCase();
+      const filterValor = (document.getElementById('col-filter-valor').value || '').toLowerCase();
+      const filterDataLanc = (document.getElementById('col-filter-data_lancamento').value || '').toLowerCase();
+      const filterDataVenc = (document.getElementById('col-filter-data_vencimento').value || '').toLowerCase();
+      const filterObs = (document.getElementById('col-filter-observacao').value || '').toLowerCase();
+      const filterTipo = (document.getElementById('col-filter-tipo').value || '').toUpperCase();
+
+      let filtradas = transacoesBrutas.filter(t => {
+        const desc = (t.descricao || '').toLowerCase();
+        const cat = (t.categoria_nome || '').toLowerCase();
+        const val = String(t.valor || '');
+        const obs = (t.observacao || '').toLowerCase();
+        const tipo = (t.tipo || '').toUpperCase();
+
+        const dataLancStr = new Date(t.data_lancamento).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+        const dataVencObj = new Date(t.data_vencimento);
+        const mesVenc = String(dataVencObj.getUTCMonth() + 1).padStart(2, '0');
+        const anoVenc = dataVencObj.getUTCFullYear();
+        const mesAnoVencStr = `${mesVenc}/${anoVenc}`;
+
+        const matchDesc = desc.includes(filterDesc);
+        const matchCat = cat.includes(filterCat);
+        const matchVal = val.includes(filterValor);
+        const matchDataLanc = dataLancStr.includes(filterDataLanc);
+        const matchDataVenc = mesAnoVencStr.includes(filterDataVenc);
+        const matchObs = obs.includes(filterObs);
+        const matchTipo = !filterTipo || tipo === filterTipo;
+
+        return matchDesc && matchCat && matchVal && matchDataLanc && matchDataVenc && matchObs && matchTipo;
+      });
+
+      // ORDENAÇÃO
+      filtradas.sort((a, b) => {
+        let valA = a[colunaOrdenacao];
+        let valB = b[colunaOrdenacao];
+
+        if (colunaOrdenacao === 'valor') {
+          valA = parseFloat(valA) || 0;
+          valB = parseFloat(valB) || 0;
+        } else if (colunaOrdenacao === 'data_lancamento' || colunaOrdenacao === 'data_vencimento') {
+          valA = new Date(valA).getTime();
+          valB = new Date(valB).getTime();
+        } else {
+          valA = String(valA || '').toLowerCase();
+          valB = String(valB || '').toLowerCase();
+        }
+
+        if (valA < valB) return direcaoOrdenacao === 'asc' ? -1 : 1;
+        if (valA > valB) return direcaoOrdenacao === 'asc' ? 1 : -1;
+        return 0;
+      });
+
+      // RENDERIZAR NA TABELA
+      const tbody = document.getElementById('tabelaTransacoes');
+      tbody.innerHTML = '';
+
+      filtradas.forEach(t => {
+        const dataLanc = new Date(t.data_lancamento).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+        
+        const dataVencObj = new Date(t.data_vencimento);
+        const mesVenc = String(dataVencObj.getUTCMonth() + 1).padStart(2, '0');
+        const anoVenc = dataVencObj.getUTCFullYear();
+        const mesAnoVencimento = `${mesVenc}/${anoVenc}`;
+
+        const obsTexto = t.observacao ? `<span title="${t.observacao}">📝 Info</span>` : '-';
+        const categoriaNome = t.categoria_nome || '-';
+
+        tbody.innerHTML += `
+          <tr>
+            <td>${t.descricao}</td>
+            <td>${categoriaNome}</td>
+            <td class="${t.tipo}">R$ ${parseFloat(t.valor).toFixed(2)}</td>
+            <td>${dataLanc}</td>
+            <td>${mesAnoVencimento}</td>
+            <td>${obsTexto}</td>
+            <td>${t.tipo}</td>
+            <td><button class="btn-delete" onclick="excluirTransacao(${t.id})">Excluir</button></td>
+          </tr>
+        `;
+      });
+    }
+
+    // SALVAR TRANSAÇÃO
+    document.getElementById('formTransacao').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const novaTransacao = {
+        descricao: document.getElementById('descricao').value,
+        categoria_id: document.getElementById('categoria_id').value || null,
+        valor: parseFloat(document.getElementById('valor').value),
+        tipo: document.getElementById('tipo').value,
+        parcelas: parseInt(document.getElementById('parcelas').value) || 1,
+        data_lancamento: document.getElementById('data_lancamento').value,
+        observacao: document.getElementById('observacao').value,
+        status: "PENDENTE"
+      };
+
+      const res = await fetch(`${API_BASE}/transacoes`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(novaTransacao)
+      });
+
+      if (res.ok) {
+        alert('Transação cadastrada com sucesso!');
+        document.getElementById('formTransacao').reset();
+        document.getElementById('parcelas').value = 1;
+        document.getElementById('data_lancamento').valueAsDate = new Date();
+        trocarAba('consulta');
+      } else {
+        alert('Erro ao cadastrar transação.');
+      }
+    });
+
+    // EXCLUIR
+    async function excluirTransacao(id) {
+      if (confirm('Mover lançamento para a lixeira?')) {
+        await fetch(`${API_BASE}/transacoes/${id}`, {
+          method: 'DELETE',
+          headers: getAuthHeaders()
+        });
+        carregarTransacoes();
+      }
+    }
+
+    // LIXEIRA
+    async function abrirLixeira() {
+      const res = await fetch(`${API_BASE}/transacoes/lixeira`, { headers: getAuthHeaders() });
+      const dados = await res.json();
+      const tbody = document.getElementById('tabelaLixeira');
+      tbody.innerHTML = '';
+
+      dados.forEach(t => {
+        const dataExclusao = new Date(t.deleted_at).toLocaleDateString('pt-BR');
+        tbody.innerHTML += `
+          <tr>
+            <td>${t.descricao}</td>
+            <td>R$ ${parseFloat(t.valor).toFixed(2)}</td>
+            <td>${dataExclusao}</td>
+          </tr>
+        `;
+      });
+      document.getElementById('modalLixeira').style.display = 'flex';
+    }
+
+    function fecharLixeira() {
+      document.getElementById('modalLixeira').style.display = 'none';
+    }
+
+    verificarAutenticacao();
+  </script>
+</body>
+</html>

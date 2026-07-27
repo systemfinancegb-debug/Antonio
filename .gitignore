@@ -1,0 +1,15 @@
+# Arquivos de ambiente e credenciais
+.env
+.env.local
+
+# Pasta de dependências pesadas
+node_modules/
+
+# Logs e arquivos de execução
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Pastas de build geradas localmente
+dist/
+build/
