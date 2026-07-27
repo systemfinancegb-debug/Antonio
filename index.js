@@ -5,10 +5,10 @@ const db = require('./db');
 require('dotenv').config();
 
 // 1. IMPORTAÇÃO DOS MIDDLEWARES E ROTAS
-const authMiddleware = require('./src/middlewares/authMiddleware');
-const authRoutes = require('./src/routes/authRoutes');
-const transacaoRoutes = require('./src/routes/transacaoRoutes');
-const categoriaRoutes = require('./src/routes/categoriaRoutes'); // <--- NOVO: Importa a rota de categorias
+const authMiddleware = require('./middlewares/authMiddleware');
+const authRoutes = require('./routes/authRoutes');
+const transacaoRoutes = require('./routes/transacaoRoutes');
+const categoriaRoutes = require('./routes/categoriaRoutes'); // <--- NOVO: Importa a rota de categorias
 
 const app = express();
 
