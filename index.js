@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const cron = require('node-cron');
-const db = require('./src/db');
+const db = require('./db');
 require('dotenv').config();
 
 // 1. IMPORTAÇÃO DOS MIDDLEWARES E ROTAS
