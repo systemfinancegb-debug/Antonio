@@ -8,10 +8,13 @@ router.get('/', transacaoController.listarTransacoes);
 // 2. GET /api/transacoes/lixeira - Lista itens da lixeira
 router.get('/lixeira', transacaoController.listarLixeira);
 
-// 3. POST /api/transacoes - Cria uma nova transação
+// 3. GET /api/transacoes/semelhantes - Busca lançamentos futuros parecidos para exclusão em lote
+router.get('/semelhantes', transacaoController.buscarSemelhantes);
+
+// 4. POST /api/transacoes - Cria uma nova transação
 router.post('/', transacaoController.criarTransacao);
 
-// 4. DELETE /api/transacoes/:id - Move para a lixeira
+// 5. DELETE /api/transacoes/:id - Move para a lixeira
 router.delete('/:id', transacaoController.moverParaLixeira);
 
 module.exports = router;

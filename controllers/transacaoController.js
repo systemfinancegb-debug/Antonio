@@ -51,7 +51,44 @@ exports.listarTransacoes = async (req, res) => {
   }
 };
 
-// 2. Criar uma nova transação (com campo observacao e parcelamento para DESPESA e RECEITA)
+// 2. BUSCAR TRANSAÇÕES SEMELHANTES FUTURAS (Para sugestão de exclusão em lote)
+exports.buscarSemelhantes = async (req, res) => {
+  const { descricao, valor, tipo, data_vencimento } = req.query;
+  const usuarioId = req.usuarioId || req.usuario?.id;
+
+  if (!descricao || !valor || !tipo || !data_vencimento) {
+    return res.status(400).json({ erro: 'Parâmetros ausentes para a busca.' });
+  }
+
+  try {
+    // Remove qualquer sufixo de parcelamento ex: " (1/12)" para comparar a descrição base
+    const descricaoBase = descricao.replace(/\s*\(\d+\/\d+\)\s*$/, '').trim();
+
+    const queryText = `
+      SELECT t.id, t.descricao, t.valor, t.tipo, t.data_vencimento, c.nome AS categoria_nome
+      FROM transacoes t
+      LEFT JOIN categorias c ON t.categoria_id = c.id
+      WHERE t.deleted_at IS NULL
+        AND LOWER(TRIM(REGEXP_REPLACE(t.descricao, '\\s*\\(\\d+/\\d+\\)\\s*$', '', 'g'))) = LOWER(TRIM($1))
+        AND ABS(t.valor - $2) < 0.01
+        AND LOWER(t.tipo) = LOWER($3)
+        AND t.data_vencimento >= $4
+        ${usuarioId ? 'AND t.usuario_id = $5' : ''}
+      ORDER BY t.data_vencimento ASC;
+    `;
+
+    const params = [descricaoBase, parseFloat(valor), tipo, data_vencimento];
+    if (usuarioId) params.push(usuarioId);
+
+    const resultado = await db.query(queryText, params);
+    res.status(200).json(resultado.rows);
+  } catch (error) {
+    console.error('Erro ao buscar transações semelhantes:', error);
+    res.status(500).json({ erro: 'Erro interno ao buscar lançamentos semelhantes' });
+  }
+};
+
+// 3. Criar uma nova transação (com campo observacao e parcelamento para DESPESA e RECEITA)
 exports.criarTransacao = async (req, res) => {
   const { 
     descricao, 
@@ -66,7 +103,7 @@ exports.criarTransacao = async (req, res) => {
     parcelas = 1 
   } = req.body;
 
-  const usuarioId = req.usuarioId;
+  const usuarioId = req.usuarioId || req.usuario?.id;
 
   try {
     const totalParcelas = parseInt(parcelas) || 1;
@@ -146,7 +183,7 @@ exports.criarTransacao = async (req, res) => {
   }
 };
 
-// 3. Listar transações da LIXEIRA
+// 4. Listar transações da LIXEIRA
 exports.listarLixeira = async (req, res) => {
   try {
     const queryText = `
@@ -165,10 +202,10 @@ exports.listarLixeira = async (req, res) => {
   }
 };
 
-// 4. Mover transação para a Lixeira (com LOG)
+// 5. Mover transação para a Lixeira (com LOG)
 exports.moverParaLixeira = async (req, res) => {
   const { id } = req.params;
-  const usuarioId = req.usuarioId;
+  const usuarioId = req.usuarioId || req.usuario?.id;
 
   try {
     const queryText = `
