@@ -1,7 +1,7 @@
 const db = require('../db');
 const registrarLog = require('../utils/logger');
 
-// 1. Listar transações ATIVAS (Filtrando por Mês/Ano da Data de Vencimento)
+// 1. LISTAR TRANSAÇÕES ATIVAS (Filtrando por Mês/Ano da Data de Vencimento/Competência)
 exports.listarTransacoes = async (req, res) => {
   const { mes, ano } = req.query;
 
@@ -88,13 +88,14 @@ exports.buscarSemelhantes = async (req, res) => {
   }
 };
 
-// 3. Criar uma nova transação (com campo observacao e parcelamento para DESPESA e RECEITA)
+// 3. CRIAR UMA NOVA TRANSAÇÃO (Única ou Parcelada com Competência de Vencimento)
 exports.criarTransacao = async (req, res) => {
   const { 
     descricao, 
     valor, 
     tipo, 
     data_lancamento, 
+    data_vencimento, // Competência de Vencimento
     data_pagamento, 
     status, 
     categoria_id, 
@@ -108,19 +109,27 @@ exports.criarTransacao = async (req, res) => {
   try {
     const totalParcelas = parseInt(parcelas) || 1;
     const valorNum = parseFloat(valor);
+    const vencimentoFinal = data_vencimento || data_lancamento;
 
     // LANÇAMENTO ÚNICO
     if (totalParcelas === 1) {
       const queryText = `
         INSERT INTO transacoes 
           (descricao, valor, tipo, data_lancamento, data_vencimento, data_pagamento, status, categoria_id, conta_id, usuario_id, observacao, parcela_atual, total_parcelas)
-        VALUES ($1, $2, $3, $4, $4, $5, $6, $7, $8, $9, $10, 1, 1)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 1, 1)
         RETURNING *
       `;
       const valores = [
-        descricao, valorNum, tipo, data_lancamento, 
-        data_pagamento || null, status || 'PENDENTE', 
-        categoria_id || null, conta_id || null, usuarioId || null,
+        descricao, 
+        valorNum, 
+        tipo, 
+        data_lancamento, 
+        vencimentoFinal, 
+        data_pagamento || null, 
+        status || 'PENDENTE', 
+        categoria_id || null, 
+        conta_id || null, 
+        usuarioId || null,
         observacao || null
       ];
 
@@ -134,15 +143,15 @@ exports.criarTransacao = async (req, res) => {
       return res.status(201).json(novaTransacao);
     }
 
-    // LANÇAMENTO PARCELADO (Atende tanto DESPESA quanto RECEITA com proteção contra Timezone)
+    // LANÇAMENTO PARCELADO (Avança o mês da competência a cada parcela)
     const transacoesGeradas = [];
-    const [anoBase, mesBase, diaBase] = data_lancamento.split('-').map(Number);
+    const [anoBase, mesBase, diaBase] = vencimentoFinal.split('-').map(Number);
 
     for (let i = 1; i <= totalParcelas; i++) {
       const descParcelada = `${descricao} (${i}/${totalParcelas})`;
       
-      // Projeta o vencimento preservando o dia correto nos meses subsequentes
-      const dataVenc = new Date(Date.UTC(anoBase, (mesBase - 1) + (i - 1), diaBase));
+      // Calcula a data de vencimento incremental mantendo o fuso correto UTC
+      const dataVenc = new Date(Date.UTC(anoBase, (mesBase - 1) + (i - 1), diaBase || 10));
 
       const queryText = `
         INSERT INTO transacoes 
@@ -156,7 +165,7 @@ exports.criarTransacao = async (req, res) => {
         valorNum, 
         tipo, 
         data_lancamento, 
-        dataVenc.toISOString().split('T')[0], // Data formatada YYYY-MM-DD
+        dataVenc.toISOString().split('T')[0], // YYYY-MM-DD
         i === 1 ? data_pagamento || null : null, 
         i === 1 ? status || 'PENDENTE' : 'PENDENTE', 
         categoria_id || null, 
@@ -183,7 +192,63 @@ exports.criarTransacao = async (req, res) => {
   }
 };
 
-// 4. Listar transações da LIXEIRA
+// 4. ATUALIZAR TRANSAÇÃO (EDIÇÃO COMPLETA)
+exports.atualizarTransacao = async (req, res) => {
+  const { id } = req.params;
+  const { 
+    descricao, 
+    valor, 
+    tipo, 
+    data_lancamento, 
+    data_vencimento, 
+    categoria_id, 
+    observacao 
+  } = req.body;
+  const usuarioId = req.usuarioId || req.usuario?.id;
+
+  try {
+    const queryText = `
+      UPDATE transacoes 
+      SET descricao = $1, 
+          valor = $2, 
+          tipo = $3, 
+          data_lancamento = $4, 
+          data_vencimento = $5, 
+          categoria_id = $6, 
+          observacao = $7
+      WHERE id = $8 AND deleted_at IS NULL
+      RETURNING *
+    `;
+
+    const valores = [
+      descricao,
+      parseFloat(valor),
+      tipo,
+      data_lancamento,
+      data_vencimento,
+      categoria_id || null,
+      observacao || null,
+      id
+    ];
+
+    const resultado = await db.query(queryText, valores);
+
+    if (resultado.rowCount === 0) {
+      return res.status(404).json({ erro: 'Transação não encontrada para edição.' });
+    }
+
+    if (usuarioId) {
+      await registrarLog(usuarioId, 'EDITAR_TRANSACAO', `Editou a transação ID ${id} (${descricao}).`);
+    }
+
+    res.status(200).json(resultado.rows[0]);
+  } catch (error) {
+    console.error('Erro ao atualizar transação:', error);
+    res.status(500).json({ erro: 'Erro interno ao atualizar transação' });
+  }
+};
+
+// 5. LISTAR TRANSAÇÕES DA LIXEIRA
 exports.listarLixeira = async (req, res) => {
   try {
     const queryText = `
@@ -202,7 +267,7 @@ exports.listarLixeira = async (req, res) => {
   }
 };
 
-// 5. Mover transação para a Lixeira (com LOG)
+// 6. MOVER TRANSAÇÃO PARA A LIXEIRA
 exports.moverParaLixeira = async (req, res) => {
   const { id } = req.params;
   const usuarioId = req.usuarioId || req.usuario?.id;
