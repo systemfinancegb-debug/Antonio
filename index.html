@@ -79,10 +79,6 @@
     .th-header:hover { color: #3498db; }
     .sort-icon { font-size: 12px; opacity: 0.7; }
 
-    /* BADGES DE STATUS DE CONTAS */
-    .status-pago { background-color: #d4edda; color: #155724; padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 12px; display: inline-block; }
-    .status-pendente { background-color: #f8d7da; color: #721c24; padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 12px; display: inline-block; }
-
     /* CAMPOS DE FILTRO DENTRO DO TH */
     .th-filter-input {
       width: 100%;
@@ -138,8 +134,8 @@
       margin-bottom: 4px;
     }
 
-    .RECEITA, .receita-txt, .PAGAR-txt { color: #27ae60; font-weight: bold; }
-    .DESPESA, .despesa-txt, .RECEBER-txt { color: #e74c3c; font-weight: bold; }
+    .RECEITA, .receita-txt { color: #27ae60; font-weight: bold; }
+    .DESPESA, .despesa-txt { color: #e74c3c; font-weight: bold; }
 
     /* MODAIS */
     .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); justify-content: center; align-items: center; z-index: 1000; }
@@ -197,7 +193,6 @@
     <!-- ABAS DE NAVEGAÇÃO -->
     <div class="nav-tabs">
       <button class="tab-btn active" id="btnTabConsulta" onclick="trocarAba('consulta')">📊 Consultar Transações</button>
-      <button class="tab-btn" id="btnTabContas" onclick="trocarAba('contas')">📋 Contas Pagar / Receber</button>
       <button class="tab-btn" id="btnTabNovo" onclick="trocarAba('novo')">➕ Novo Lançamento</button>
       <button class="tab-btn" id="btnTabCategorias" onclick="trocarAba('categorias')">🏷️ Categorias</button>
     </div>
@@ -339,45 +334,7 @@
       </div>
     </div>
 
-    <!-- ABA 2: CONTAS A PAGAR / RECEBER POR COMPETÊNCIA -->
-    <div id="abaContas" class="tab-content">
-      <div class="filtro-bar">
-        <label for="filtroContasMes">Mês Competência:</label>
-        <select id="filtroContasMes" onchange="carregarContasRegistro()">
-          <option value="1">Janeiro</option><option value="2">Fevereiro</option><option value="3">Março</option>
-          <option value="4">Abril</option><option value="5">Maio</option><option value="6">Junho</option>
-          <option value="7">Julho</option><option value="8">Agosto</option><option value="9">Setembro</option>
-          <option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
-        </select>
-
-        <label for="filtroContasAno">Ano:</label>
-        <input type="number" id="filtroContasAno" style="width: 80px;" onchange="carregarContasRegistro()">
-
-        <button onclick="abrirModalNovaConta()" style="margin-left: auto; background-color: #27ae60;">➕ Nova Conta</button>
-      </div>
-
-      <div class="card-full">
-        <h2>Contas a Pagar e Receber por Competência</h2>
-        <table>
-          <thead>
-            <tr>
-              <th style="width: 50px; text-align: center;">Pago?</th>
-              <th>Descrição</th>
-              <th>Tipo</th>
-              <th>Categoria</th>
-              <th>Valor</th>
-              <th>Data Vencimento</th>
-              <th>Data Pagamento</th>
-              <th>Status</th>
-              <th>Ações</th>
-            </tr>
-          </thead>
-          <tbody id="tabelaContasRegistro"></tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- ABA 3: NOVO LANÇAMENTO (TRANSAÇÕES) -->
+    <!-- ABA 2: NOVO LANÇAMENTO (TRANSAÇÕES) -->
     <div id="abaNovo" class="tab-content">
       <div class="card">
         <h2>Cadastrar Nova Transação</h2>
@@ -429,7 +386,7 @@
       </div>
     </div>
 
-    <!-- ABA 4: CADASTRO DE CATEGORIAS -->
+    <!-- ABA 3: CADASTRO DE CATEGORIAS -->
     <div id="abaCategorias" class="tab-content">
       <div class="card" style="margin-bottom: 20px;">
         <h2>Gerenciar Categorias</h2>
@@ -524,49 +481,6 @@
     </div>
   </div>
 
-  <!-- MODAL DE CONTAS A PAGAR / RECEBER (NOVA E EDIÇÃO) -->
-  <div id="modalConta" class="modal-overlay">
-    <div class="modal-content">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-        <h2 id="tituloModalConta">📋 Nova Conta</h2>
-        <button onclick="fecharModalConta()" style="background:#95a5a6; padding: 5px 10px;">✖ Fechar</button>
-      </div>
-      <form id="formContaRegistro">
-        <input type="hidden" id="conta_id">
-        <div>
-          <label>Descrição:</label>
-          <input type="text" id="conta_descricao" required placeholder="Ex: Fatura Internet, Cliente X...">
-        </div>
-        <div>
-          <label>Tipo:</label>
-          <select id="conta_tipo" required>
-            <option value="PAGAR">Conta a Pagar</option>
-            <option value="RECEBER">Conta a Receber</option>
-          </select>
-        </div>
-        <div>
-          <label>Categoria:</label>
-          <select id="conta_categoria_id">
-            <option value="">Sem categoria</option>
-          </select>
-        </div>
-        <div>
-          <label>Valor (R$):</label>
-          <input type="number" step="0.01" id="conta_valor" required placeholder="0.00">
-        </div>
-        <div>
-          <label>Data de Vencimento (Dia/Mês/Ano):</label>
-          <input type="date" id="conta_data_vencimento" required>
-        </div>
-        <div>
-          <label>Observação (Opcional):</label>
-          <textarea id="conta_observacao" rows="2" placeholder="Detalhes da conta..."></textarea>
-        </div>
-        <button type="submit" style="margin-top: 10px;">Salvar Conta</button>
-      </form>
-    </div>
-  </div>
-
   <!-- MODAL DE EXCLUSÃO EM LOTE -->
   <div id="modalExcluirLote" class="modal-overlay">
     <div class="modal-content">
@@ -623,7 +537,6 @@
 
     // ESTADO GLOBAL DE DADOS
     let transacoesBrutas = [];
-    let contasBrutas = [];
     let categoriasBrutas = [];
     let colunaOrdenacao = 'data_vencimento';
     let direcaoOrdenacao = 'asc';
@@ -639,8 +552,6 @@
     const hoje = new Date();
     document.getElementById('filtroMes').value = hoje.getMonth() + 1;
     document.getElementById('filtroAno').value = hoje.getFullYear();
-    document.getElementById('filtroContasMes').value = hoje.getMonth() + 1;
-    document.getElementById('filtroContasAno').value = hoje.getFullYear();
     document.getElementById('data_lancamento').valueAsDate = hoje;
     
     sugerirCompetenciaVencimento();
@@ -677,10 +588,6 @@
         document.getElementById('abaConsulta').classList.add('active');
         document.getElementById('btnTabConsulta').classList.add('active');
         carregarTransacoes();
-      } else if (nomeAba === 'contas') {
-        document.getElementById('abaContas').classList.add('active');
-        document.getElementById('btnTabContas').classList.add('active');
-        carregarContasRegistro();
       } else if (nomeAba === 'novo') {
         document.getElementById('abaNovo').classList.add('active');
         document.getElementById('btnTabNovo').classList.add('active');
@@ -808,11 +715,9 @@
 
         const select = document.getElementById('categoria_id');
         const editSelect = document.getElementById('edit_categoria_id');
-        const contaSelect = document.getElementById('conta_categoria_id');
         
         if (select) select.innerHTML = optionsHTML;
         if (editSelect) editSelect.innerHTML = optionsHTML;
-        if (contaSelect) contaSelect.innerHTML = optionsHTML;
       } catch (err) { console.error('Erro ao carregar select de categorias:', err); }
     }
 
@@ -1084,148 +989,6 @@
       document.querySelectorAll('.th-filter-input').forEach(i => i.value = '');
       document.querySelectorAll('.dropdown-content input[type="checkbox"]').forEach(c => c.checked = false);
       filtrarEProcessarTabela();
-    }
-
-    // ==========================================
-    // MÓDULO: CONTAS A PAGAR / RECEBER
-    // ==========================================
-    async function carregarContasRegistro() {
-      const mes = document.getElementById('filtroContasMes').value;
-      const ano = document.getElementById('filtroContasAno').value;
-
-      try {
-        const res = await fetch(`${API_BASE}/contas?mes=${mes}&ano=${ano}`, { headers: getAuthHeaders() });
-        if (res.status === 401) return fazerLogout();
-        
-        contasBrutas = await res.json();
-        renderizarTabelaContas();
-      } catch (err) { console.error('Erro ao carregar contas:', err); }
-    }
-
-    function renderizarTabelaContas() {
-      const tbody = document.getElementById('tabelaContasRegistro');
-      tbody.innerHTML = '';
-
-      if (!Array.isArray(contasBrutas)) return;
-
-      contasBrutas.forEach(c => {
-        const vencimentoBR = formatarDataBR(c.data_vencimento);
-        const pagamentoBR = formatarDataBR(c.data_pagamento);
-        const statusHTML = c.pago 
-          ? `<span class="status-pago">${c.tipo === 'PAGAR' ? 'PAGO' : 'RECEBIDO'}</span>` 
-          : `<span class="status-pendente">PENDENTE</span>`;
-
-        tbody.innerHTML += `
-          <tr>
-            <td style="text-align: center;">
-              <input type="checkbox" ${c.pago ? 'checked' : ''} onchange="alterarStatusBaixa(${c.id}, this.checked)">
-            </td>
-            <td>${c.descricao}</td>
-            <td><strong class="${c.tipo}-txt">${c.tipo}</strong></td>
-            <td>${c.categoria_nome || '-'}</td>
-            <td>R$ ${parseFloat(c.valor).toFixed(2)}</td>
-            <td>${vencimentoBR}</td>
-            <td>${pagamentoBR}</td>
-            <td>${statusHTML}</td>
-            <td>
-              <button class="btn-edit" onclick="abrirModalEditarConta(${c.id})">Editar</button>
-              <button class="btn-delete" onclick="excluirConta(${c.id})">Excluir</button>
-            </td>
-          </tr>
-        `;
-      });
-    }
-
-    async function abrirModalNovaConta() {
-      await carregarCategoriasSelect();
-      document.getElementById('formContaRegistro').reset();
-      document.getElementById('conta_id').value = '';
-      document.getElementById('tituloModalConta').innerText = '📋 Nova Conta';
-      document.getElementById('modalConta').style.display = 'flex';
-    }
-
-    async function abrirModalEditarConta(id) {
-      await carregarCategoriasSelect();
-      const c = contasBrutas.find(item => item.id === id);
-      if (!c) return;
-
-      document.getElementById('conta_id').value = c.id;
-      document.getElementById('conta_descricao').value = c.descricao;
-      document.getElementById('conta_tipo').value = c.tipo;
-      document.getElementById('conta_categoria_id').value = c.categoria_id || '';
-      document.getElementById('conta_valor').value = parseFloat(c.valor);
-      document.getElementById('conta_data_vencimento').value = c.data_vencimento ? c.data_vencimento.split('T')[0] : '';
-      document.getElementById('conta_observacao').value = c.observacao || '';
-
-      document.getElementById('tituloModalConta').innerText = '✏️ Editar Conta';
-      document.getElementById('modalConta').style.display = 'flex';
-    }
-
-    function fecharModalConta() {
-      document.getElementById('modalConta').style.display = 'none';
-    }
-
-    document.getElementById('formContaRegistro').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const id = document.getElementById('conta_id').value;
-      const bodyData = {
-        descricao: document.getElementById('conta_descricao').value,
-        tipo: document.getElementById('conta_tipo').value,
-        categoria_id: document.getElementById('conta_categoria_id').value || null,
-        valor: parseFloat(document.getElementById('conta_valor').value),
-        data_vencimento: document.getElementById('conta_data_vencimento').value,
-        observacao: document.getElementById('conta_observacao').value
-      };
-
-      const url = id ? `${API_BASE}/contas/${id}` : `${API_BASE}/contas`;
-      const method = id ? 'PUT' : 'POST';
-
-      const res = await fetch(url, {
-        method,
-        headers: getAuthHeaders(),
-        body: JSON.stringify(bodyData)
-      });
-
-      if (res.ok) {
-        alert(id ? 'Conta atualizada com sucesso!' : 'Conta cadastrada com sucesso!');
-        fecharModalConta();
-        carregarContasRegistro();
-      } else {
-        alert('Erro ao salvar conta.');
-      }
-    });
-
-    async function alterarStatusBaixa(id, marcarComoPago) {
-      let dataPagamento = null;
-
-      if (marcarComoPago) {
-        const dataInput = prompt("Informe a data do pagamento/recebimento (AAAA-MM-DD):", new Date().toISOString().split('T')[0]);
-        if (!dataInput) {
-          carregarContasRegistro();
-          return;
-        }
-        dataPagamento = dataInput;
-      }
-
-      const res = await fetch(`${API_BASE}/contas/${id}/baixa`, {
-        method: 'PATCH',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ pago: marcarComoPago, data_pagamento: dataPagamento })
-      });
-
-      if (res.ok) {
-        carregarContasRegistro();
-      } else {
-        alert('Erro ao atualizar status do pagamento.');
-        carregarContasRegistro();
-      }
-    }
-
-    async function excluirConta(id) {
-      if (confirm('Deseja realmente excluir esta conta?')) {
-        const res = await fetch(`${API_BASE}/contas/${id}`, { method: 'DELETE', headers: getAuthHeaders() });
-        if (res.ok) carregarContasRegistro();
-      }
     }
 
     // PREPARAR E BUSCAR TRANSAÇÕES SEMELHANTES FUTURAS NO BACKEND
