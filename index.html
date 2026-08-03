@@ -18,7 +18,7 @@
     .user-info { font-size: 14px; color: #555; }
     
     /* NAVEGAÇÃO POR ABAS */
-    .nav-tabs { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #ddd; padding-bottom: 10px; }
+    .nav-tabs { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #ddd; padding-bottom: 10px; flex-wrap: wrap; }
     .tab-btn { background: #e0e0e0; color: #333; border: none; padding: 10px 20px; font-size: 15px; font-weight: bold; border-radius: 6px; cursor: pointer; transition: 0.2s; }
     .tab-btn.active { background: #2c3e50; color: #fff; }
     .tab-btn:hover:not(.active) { background: #d0d0d0; }
@@ -48,9 +48,7 @@
       border-radius: 4px;
       transition: background 0.2s;
     }
-    .btn-toggle-card:hover {
-      background: #f0f0f0;
-    }
+    .btn-toggle-card:hover { background: #f0f0f0; }
 
     /* BARRA DE FILTRO DA COMPETÊNCIA */
     .filtro-bar { background: #fff; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; align-items: center; gap: 15px; flex-wrap: wrap; box-shadow: 0 2px 6px rgba(0,0,0,0.05); }
@@ -65,7 +63,10 @@
     button { background-color: #27ae60; color: white; border: none; font-weight: bold; cursor: pointer; transition: 0.2s; }
     button:hover { background-color: #219150; }
     
+    .btn-edit { background-color: #3498db; padding: 6px 12px; font-size: 12px; margin-right: 4px; }
+    .btn-edit:hover { background-color: #2980b9; }
     .btn-delete { background-color: #e74c3c; padding: 6px 12px; font-size: 12px; }
+    .btn-delete:hover { background-color: #c0392b; }
     .btn-lixeira { background-color: #7f8c8d; }
     .btn-sair { background-color: #c0392b; padding: 5px 10px; margin-left: 10px; }
 
@@ -77,6 +78,10 @@
     .th-header { display: flex; justify-content: space-between; align-items: center; cursor: pointer; gap: 5px; }
     .th-header:hover { color: #3498db; }
     .sort-icon { font-size: 12px; opacity: 0.7; }
+
+    /* BADGES DE STATUS DE CONTAS */
+    .status-pago { background-color: #d4edda; color: #155724; padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 12px; display: inline-block; }
+    .status-pendente { background-color: #f8d7da; color: #721c24; padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 12px; display: inline-block; }
 
     /* CAMPOS DE FILTRO DENTRO DO TH */
     .th-filter-input {
@@ -92,10 +97,51 @@
       color: #333;
     }
 
-    .RECEITA, .receita-txt { color: #27ae60; font-weight: bold; }
-    .DESPESA, .despesa-txt { color: #e74c3c; font-weight: bold; }
+    /* DROPDOWNS DE MULTI-SELEÇÃO NAS COLUNAS */
+    .dropdown-filtro {
+      position: relative;
+      display: block;
+      margin-top: 5px;
+      font-weight: normal;
+    }
+    .btn-dropdown {
+      background: #fff;
+      color: #333;
+      padding: 3px 6px;
+      font-size: 11px;
+      border: 1px solid #bdc3c7;
+      border-radius: 3px;
+      cursor: pointer;
+      list-style: none;
+      text-align: center;
+    }
+    .dropdown-content {
+      position: absolute;
+      background-color: #ffffff;
+      min-width: 160px;
+      box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+      padding: 8px;
+      z-index: 100;
+      border-radius: 4px;
+      color: #333;
+      max-height: 160px;
+      overflow-y: auto;
+      border: 1px solid #ccc;
+    }
+    .dropdown-content label {
+      font-size: 12px;
+      font-weight: normal;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      margin-bottom: 4px;
+    }
 
-    /* MODAL LIXEIRA */
+    .RECEITA, .receita-txt, .PAGAR-txt { color: #27ae60; font-weight: bold; }
+    .DESPESA, .despesa-txt, .RECEBER-txt { color: #e74c3c; font-weight: bold; }
+
+    /* MODAIS */
     .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); justify-content: center; align-items: center; z-index: 1000; }
     .modal-content { background: #fff; padding: 25px; border-radius: 8px; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; }
 
@@ -151,6 +197,7 @@
     <!-- ABAS DE NAVEGAÇÃO -->
     <div class="nav-tabs">
       <button class="tab-btn active" id="btnTabConsulta" onclick="trocarAba('consulta')">📊 Consultar Transações</button>
+      <button class="tab-btn" id="btnTabContas" onclick="trocarAba('contas')">📋 Contas Pagar / Receber</button>
       <button class="tab-btn" id="btnTabNovo" onclick="trocarAba('novo')">➕ Novo Lançamento</button>
       <button class="tab-btn" id="btnTabCategorias" onclick="trocarAba('categorias')">🏷️ Categorias</button>
     </div>
@@ -161,67 +208,61 @@
       <div class="filtro-bar">
         <label for="filtroMes">Mês:</label>
         <select id="filtroMes" onchange="carregarTransacoes()">
-          <option value="1">Janeiro</option>
-          <option value="2">Fevereiro</option>
-          <option value="3">Março</option>
-          <option value="4">Abril</option>
-          <option value="5">Maio</option>
-          <option value="6">Junho</option>
-          <option value="7">Julho</option>
-          <option value="8">Agosto</option>
-          <option value="9">Setembro</option>
-          <option value="10">Outubro</option>
-          <option value="11">Novembro</option>
-          <option value="12">Dezembro</option>
+          <option value="1">Janeiro</option><option value="2">Fevereiro</option><option value="3">Março</option>
+          <option value="4">Abril</option><option value="5">Maio</option><option value="6">Junho</option>
+          <option value="7">Julho</option><option value="8">Agosto</option><option value="9">Setembro</option>
+          <option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
         </select>
 
         <label for="filtroAno">Ano:</label>
         <input type="number" id="filtroAno" style="width: 80px;" onchange="carregarTransacoes()">
       </div>
 
-      <!-- CARDS DE RESUMO COM BOTÕES INDIVIDUAIS DE VISIBILIDADE -->
+      <!-- CARDS DE RESUMO -->
       <div class="dashboard-resumo">
-        <!-- Card Receitas -->
         <div class="card-resumo receita">
           <div class="card-header-resumo">
             <h3>Receitas do Mês</h3>
             <button class="btn-toggle-card" onclick="alternarCardIndividual('receita')" title="Ocultar/Exibir Receitas">
-              <span id="icon-receita">👁️</span>
+              <span id="icon-receita">🙈</span>
             </button>
           </div>
-          <div class="valor receita-txt" id="totalReceitas">R$ 0,00</div>
+          <div class="valor receita-txt" id="totalReceitas">R$ ***</div>
         </div>
 
-        <!-- Card Despesas -->
         <div class="card-resumo despesa">
           <div class="card-header-resumo">
             <h3>Despesas do Mês</h3>
             <button class="btn-toggle-card" onclick="alternarCardIndividual('despesa')" title="Ocultar/Exibir Despesas">
-              <span id="icon-despesa">👁️</span>
+              <span id="icon-despesa">🙈</span>
             </button>
           </div>
-          <div class="valor despesa-txt" id="totalDespesas">R$ 0,00</div>
+          <div class="valor despesa-txt" id="totalDespesas">R$ ***</div>
         </div>
 
-        <!-- Card Saldo -->
         <div class="card-resumo saldo">
           <div class="card-header-resumo">
             <h3>Saldo Mensal</h3>
             <button class="btn-toggle-card" onclick="alternarCardIndividual('saldo')" title="Ocultar/Exibir Saldo">
-              <span id="icon-saldo">👁️</span>
+              <span id="icon-saldo">🙈</span>
             </button>
           </div>
-          <div class="valor" id="totalSaldo">R$ 0,00</div>
+          <div class="valor" id="totalSaldo">R$ ***</div>
         </div>
       </div>
 
-      <!-- TABELA DE TRANSAÇÕES COM FILTROS E ORDENAÇÃO NAS COLUNAS -->
+      <!-- SINALIZAÇÃO DE FILTROS ATIVOS -->
+      <div id="barraAlertaFiltros" style="display: none; background: #fff3cd; color: #856404; padding: 10px 15px; border-radius: 6px; margin-bottom: 15px; align-items: center; justify-content: space-between; border: 1px solid #ffeeba;">
+        <span>⚠️ <strong>Filtros ativos:</strong> Os valores exibidos nos cards e na tabela referem-se aos itens filtrados.</span>
+        <button onclick="limparTodosFiltros()" style="background: #e74c3c; padding: 5px 10px; font-size: 12px;">Limpar Filtros</button>
+      </div>
+
+      <!-- TABELA DE TRANSAÇÕES -->
       <div class="card-full">
         <h2>Transações do Mês</h2>
         <table>
           <thead>
             <tr>
-              <!-- Descrição -->
               <th>
                 <div class="th-header" onclick="ordenarPor('descricao')">
                   <span>Descrição</span>
@@ -230,16 +271,17 @@
                 <input type="text" class="th-filter-input" placeholder="Filtrar..." oninput="filtrarEProcessarTabela()" id="col-filter-descricao">
               </th>
               
-              <!-- Categoria -->
               <th>
                 <div class="th-header" onclick="ordenarPor('categoria_nome')">
                   <span>Categoria</span>
                   <span class="sort-icon" id="sort-categoria_nome">↕</span>
                 </div>
-                <input type="text" class="th-filter-input" placeholder="Filtrar..." oninput="filtrarEProcessarTabela()" id="col-filter-categoria_nome">
+                <details class="dropdown-filtro">
+                  <summary class="btn-dropdown">Selecionar ▾</summary>
+                  <div class="dropdown-content" id="options-categoria_nome"></div>
+                </details>
               </th>
 
-              <!-- Valor -->
               <th>
                 <div class="th-header" onclick="ordenarPor('valor')">
                   <span>Valor</span>
@@ -248,7 +290,6 @@
                 <input type="text" class="th-filter-input" placeholder="Min/Valor..." oninput="filtrarEProcessarTabela()" id="col-filter-valor">
               </th>
 
-              <!-- Data Lançamento -->
               <th>
                 <div class="th-header" onclick="ordenarPor('data_lancamento')">
                   <span>Data Lanç.</span>
@@ -257,7 +298,6 @@
                 <input type="text" class="th-filter-input" placeholder="DD/MM/AAAA" oninput="filtrarEProcessarTabela()" id="col-filter-data_lancamento">
               </th>
 
-              <!-- Mês/Ano Vencimento -->
               <th>
                 <div class="th-header" onclick="ordenarPor('data_vencimento')">
                   <span>Mês/Ano Venc.</span>
@@ -266,7 +306,6 @@
                 <input type="text" class="th-filter-input" placeholder="MM/AAAA..." oninput="filtrarEProcessarTabela()" id="col-filter-data_vencimento">
               </th>
 
-              <!-- Obs -->
               <th>
                 <div class="th-header">
                   <span>Obs.</span>
@@ -274,20 +313,20 @@
                 <input type="text" class="th-filter-input" placeholder="Filtrar..." oninput="filtrarEProcessarTabela()" id="col-filter-observacao">
               </th>
 
-              <!-- Tipo -->
               <th>
                 <div class="th-header" onclick="ordenarPor('tipo')">
                   <span>Tipo</span>
                   <span class="sort-icon" id="sort-tipo">↕</span>
                 </div>
-                <select class="th-filter-input" onchange="filtrarEProcessarTabela()" id="col-filter-tipo">
-                  <option value="">Todos</option>
-                  <option value="DESPESA">Despesa</option>
-                  <option value="RECEITA">Receita</option>
-                </select>
+                <details class="dropdown-filtro">
+                  <summary class="btn-dropdown">Selecionar ▾</summary>
+                  <div class="dropdown-content" id="options-tipo">
+                    <label><input type="checkbox" value="DESPESA" onchange="filtrarEProcessarTabela()" class="chk-filter-tipo"> Despesa</label>
+                    <label><input type="checkbox" value="RECEITA" onchange="filtrarEProcessarTabela()" class="chk-filter-tipo"> Receita</label>
+                  </div>
+                </details>
               </th>
 
-              <!-- Ações -->
               <th>
                 <div class="th-header">
                   <span>Ações</span>
@@ -300,7 +339,45 @@
       </div>
     </div>
 
-    <!-- ABA 2: NOVO LANÇAMENTO -->
+    <!-- ABA 2: CONTAS A PAGAR / RECEBER POR COMPETÊNCIA -->
+    <div id="abaContas" class="tab-content">
+      <div class="filtro-bar">
+        <label for="filtroContasMes">Mês Competência:</label>
+        <select id="filtroContasMes" onchange="carregarContasRegistro()">
+          <option value="1">Janeiro</option><option value="2">Fevereiro</option><option value="3">Março</option>
+          <option value="4">Abril</option><option value="5">Maio</option><option value="6">Junho</option>
+          <option value="7">Julho</option><option value="8">Agosto</option><option value="9">Setembro</option>
+          <option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
+        </select>
+
+        <label for="filtroContasAno">Ano:</label>
+        <input type="number" id="filtroContasAno" style="width: 80px;" onchange="carregarContasRegistro()">
+
+        <button onclick="abrirModalNovaConta()" style="margin-left: auto; background-color: #27ae60;">➕ Nova Conta</button>
+      </div>
+
+      <div class="card-full">
+        <h2>Contas a Pagar e Receber por Competência</h2>
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 50px; text-align: center;">Pago?</th>
+              <th>Descrição</th>
+              <th>Tipo</th>
+              <th>Categoria</th>
+              <th>Valor</th>
+              <th>Data Vencimento</th>
+              <th>Data Pagamento</th>
+              <th>Status</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="tabelaContasRegistro"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ABA 3: NOVO LANÇAMENTO (TRANSAÇÕES) -->
     <div id="abaNovo" class="tab-content">
       <div class="card">
         <h2>Cadastrar Nova Transação</h2>
@@ -334,7 +411,12 @@
 
           <div>
             <label>Data de Lançamento (Compra/Entrada):</label>
-            <input type="date" id="data_lancamento" required>
+            <input type="date" id="data_lancamento" required onchange="sugerirCompetenciaVencimento()">
+          </div>
+
+          <div>
+            <label>Competência de Vencimento (Mês/Ano):</label>
+            <input type="month" id="competencia_vencimento" required>
           </div>
 
           <div>
@@ -347,7 +429,7 @@
       </div>
     </div>
 
-    <!-- ABA 3: CADASTRO DE CATEGORIAS -->
+    <!-- ABA 4: CADASTRO DE CATEGORIAS -->
     <div id="abaCategorias" class="tab-content">
       <div class="card">
         <h2>Gerenciar Categorias</h2>
@@ -365,6 +447,7 @@
             <tr>
               <th>ID</th>
               <th>Nome</th>
+              <th>Ações</th>
             </tr>
           </thead>
           <tbody id="tabelaCategorias"></tbody>
@@ -372,6 +455,144 @@
       </div>
     </div>
 
+  </div>
+
+  <!-- MODAL DE EDIÇÃO DE TRANSAÇÃO -->
+  <div id="modalEditar" class="modal-overlay">
+    <div class="modal-content">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <h2>✏️ Editar Transação</h2>
+        <button onclick="fecharModalEditar()" style="background:#95a5a6; padding: 5px 10px;">✖ Fechar</button>
+      </div>
+      <form id="formEditarTransacao">
+        <input type="hidden" id="edit_id">
+        <div>
+          <label>Descrição:</label>
+          <input type="text" id="edit_descricao" required>
+        </div>
+        <div>
+          <label>Categoria:</label>
+          <select id="edit_categoria_id">
+            <option value="">Sem categoria</option>
+          </select>
+        </div>
+        <div>
+          <label>Valor (R$):</label>
+          <input type="number" step="0.01" id="edit_valor" required>
+        </div>
+        <div>
+          <label>Tipo:</label>
+          <select id="edit_tipo">
+            <option value="DESPESA">Despesa</option>
+            <option value="RECEITA">Receita</option>
+          </select>
+        </div>
+        <div>
+          <label>Data de Lançamento:</label>
+          <input type="date" id="edit_data_lancamento" required>
+        </div>
+        <div>
+          <label>Competência de Vencimento (Mês/Ano):</label>
+          <input type="month" id="edit_competencia_vencimento" required>
+        </div>
+        <div>
+          <label>Observação (Opcional):</label>
+          <textarea id="edit_observacao" rows="2"></textarea>
+        </div>
+        <button type="submit" style="margin-top: 10px;">Salvar Alterações</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL DE EDIÇÃO DE CATEGORIA -->
+  <div id="modalEditarCategoria" class="modal-overlay">
+    <div class="modal-content">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <h2>✏️ Editar Categoria</h2>
+        <button onclick="fecharModalEditarCategoria()" style="background:#95a5a6; padding: 5px 10px;">✖ Fechar</button>
+      </div>
+      <form id="formEditarCategoria">
+        <input type="hidden" id="edit_categoria_id_val">
+        <div>
+          <label>Nome da Categoria:</label>
+          <input type="text" id="edit_categoria_nome" required>
+        </div>
+        <button type="submit" style="margin-top: 10px;">Salvar Alterações</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL DE CONTAS A PAGAR / RECEBER (NOVA E EDIÇÃO) -->
+  <div id="modalConta" class="modal-overlay">
+    <div class="modal-content">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <h2 id="tituloModalConta">📋 Nova Conta</h2>
+        <button onclick="fecharModalConta()" style="background:#95a5a6; padding: 5px 10px;">✖ Fechar</button>
+      </div>
+      <form id="formContaRegistro">
+        <input type="hidden" id="conta_id">
+        <div>
+          <label>Descrição:</label>
+          <input type="text" id="conta_descricao" required placeholder="Ex: Fatura Internet, Cliente X...">
+        </div>
+        <div>
+          <label>Tipo:</label>
+          <select id="conta_tipo" required>
+            <option value="PAGAR">Conta a Pagar</option>
+            <option value="RECEBER">Conta a Receber</option>
+          </select>
+        </div>
+        <div>
+          <label>Categoria:</label>
+          <select id="conta_categoria_id">
+            <option value="">Sem categoria</option>
+          </select>
+        </div>
+        <div>
+          <label>Valor (R$):</label>
+          <input type="number" step="0.01" id="conta_valor" required placeholder="0.00">
+        </div>
+        <div>
+          <label>Data de Vencimento (Dia/Mês/Ano):</label>
+          <input type="date" id="conta_data_vencimento" required>
+        </div>
+        <div>
+          <label>Observação (Opcional):</label>
+          <textarea id="conta_observacao" rows="2" placeholder="Detalhes da conta..."></textarea>
+        </div>
+        <button type="submit" style="margin-top: 10px;">Salvar Conta</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL DE EXCLUSÃO EM LOTE -->
+  <div id="modalExcluirLote" class="modal-overlay">
+    <div class="modal-content">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <h2>🗑️ Excluir Transação(ões)</h2>
+        <button onclick="fecharModalExcluirLote()" style="background:#95a5a6; padding: 5px 10px;">✖ Fechar</button>
+      </div>
+      <p>Encontramos os seguintes lançamentos semelhantes futuros. Marque os que deseja excluir:</p>
+      
+      <table style="margin-bottom: 15px;">
+        <thead>
+          <tr>
+            <th style="width: 40px; text-align: center;">
+              <input type="checkbox" id="chkMarcarTodasExcluir" onchange="alternarTodasExclusao(this.checked)" checked>
+            </th>
+            <th>Descrição</th>
+            <th>Mês/Venc.</th>
+            <th>Valor</th>
+          </tr>
+        </thead>
+        <tbody id="tabelaExcluirLote"></tbody>
+      </table>
+
+      <div style="display: flex; justify-content: flex-end; gap: 10px;">
+        <button type="button" onclick="fecharModalExcluirLote()" style="background:#7f8c8d;">Cancelar</button>
+        <button type="button" onclick="confirmarExclusaoLote()" style="background:#e74c3c;">Excluir Selecionados</button>
+      </div>
+    </div>
   </div>
 
   <!-- MODAL LIXEIRA -->
@@ -395,26 +616,55 @@
   </div>
 
   <script>
-    const API_BASE = 'http://localhost:3000/api';
+    const API_BASE = 'https://financeiro-tk6q.onrender.com/api';
     let modoCadastro = false;
 
-    // ESTADO GLOBAL DE DADOS DA TABELA E VISIBILIDADE INDIVIDUAL DOS CARDS
+    // ESTADO GLOBAL DE DADOS
     let transacoesBrutas = [];
+    let contasBrutas = [];
+    let categoriasBrutas = [];
     let colunaOrdenacao = 'data_vencimento';
     let direcaoOrdenacao = 'asc';
     let totaisAtuais = { receitas: 0, despesas: 0, saldo: 0 };
 
-    // Configuração do estado de visibilidade por tipo
+    // ESTADO DE VISIBILIDADE
     let visibilidadeCards = {
-      receita: localStorage.getItem('ocultar_receita') !== 'true',
-      despesa: localStorage.getItem('ocultar_despesa') !== 'true',
-      saldo: localStorage.getItem('ocultar_saldo') !== 'true'
+      receita: localStorage.getItem('visivel_receita') === 'true',
+      despesa: localStorage.getItem('visivel_despesa') === 'true',
+      saldo: localStorage.getItem('visivel_saldo') === 'true'
     };
 
     const hoje = new Date();
     document.getElementById('filtroMes').value = hoje.getMonth() + 1;
     document.getElementById('filtroAno').value = hoje.getFullYear();
+    document.getElementById('filtroContasMes').value = hoje.getMonth() + 1;
+    document.getElementById('filtroContasAno').value = hoje.getFullYear();
     document.getElementById('data_lancamento').valueAsDate = hoje;
+    
+    sugerirCompetenciaVencimento();
+
+    function sugerirCompetenciaVencimento() {
+      const dataLancVal = document.getElementById('data_lancamento').value;
+      if (dataLancVal) {
+        const parts = dataLancVal.split('-');
+        document.getElementById('competencia_vencimento').value = `${parts[0]}-${parts[1]}`;
+      }
+    }
+
+    // EXTRAI MÊS/ANO DA STRING DIRETA DA DATA (EVITA TIMEZONE VOLTAR 1 DIA)
+    function extrairMesAnoVencimento(dataStr) {
+      if (!dataStr) return '-';
+      const parteData = dataStr.split('T')[0];
+      const [ano, mes] = parteData.split('-');
+      return `${mes}/${ano}`;
+    }
+
+    function formatarDataBR(dataStr) {
+      if (!dataStr) return '-';
+      const parteData = dataStr.split('T')[0];
+      const [ano, mes, dia] = parteData.split('-');
+      return `${dia}/${mes}/${ano}`;
+    }
 
     // GERENCIAMENTO DE ABAS
     function trocarAba(nomeAba) {
@@ -425,6 +675,10 @@
         document.getElementById('abaConsulta').classList.add('active');
         document.getElementById('btnTabConsulta').classList.add('active');
         carregarTransacoes();
+      } else if (nomeAba === 'contas') {
+        document.getElementById('abaContas').classList.add('active');
+        document.getElementById('btnTabContas').classList.add('active');
+        carregarContasRegistro();
       } else if (nomeAba === 'novo') {
         document.getElementById('abaNovo').classList.add('active');
         document.getElementById('btnTabNovo').classList.add('active');
@@ -493,6 +747,7 @@
         document.getElementById('telaAuth').style.display = 'none';
         document.getElementById('painelSistema').style.display = 'block';
         document.getElementById('usuarioNome').innerText = usuario.nome || 'Usuário';
+        atualizarExibicaoTotais();
         carregarTransacoes();
         carregarCategoriasSelect();
       } else {
@@ -509,12 +764,11 @@
     // CONTROLE INDIVIDUAL DE VISIBILIDADE DOS CARDS
     function alternarCardIndividual(tipo) {
       visibilidadeCards[tipo] = !visibilidadeCards[tipo];
-      localStorage.setItem(`ocultar_${tipo}`, !visibilidadeCards[tipo]);
+      localStorage.setItem(`visivel_${tipo}`, visibilidadeCards[tipo]);
       atualizarExibicaoTotais();
     }
 
     function atualizarExibicaoTotais() {
-      // Receitas
       if (visibilidadeCards.receita) {
         document.getElementById('totalReceitas').innerText = `R$ ${totaisAtuais.receitas.toFixed(2)}`;
         document.getElementById('icon-receita').innerText = '👁️';
@@ -523,7 +777,6 @@
         document.getElementById('icon-receita').innerText = '🙈';
       }
 
-      // Despesas
       if (visibilidadeCards.despesa) {
         document.getElementById('totalDespesas').innerText = `R$ ${totaisAtuais.despesas.toFixed(2)}`;
         document.getElementById('icon-despesa').innerText = '👁️';
@@ -532,7 +785,6 @@
         document.getElementById('icon-despesa').innerText = '🙈';
       }
 
-      // Saldo
       if (visibilidadeCards.saldo) {
         document.getElementById('totalSaldo').innerText = `R$ ${totaisAtuais.saldo.toFixed(2)}`;
         document.getElementById('icon-saldo').innerText = '👁️';
@@ -547,37 +799,43 @@
       try {
         const res = await fetch(`${API_BASE}/categorias`, { headers: getAuthHeaders() });
         const categorias = await res.json();
+        categoriasBrutas = Array.isArray(categorias) ? categorias : [];
+
+        const optionsHTML = '<option value="">Sem categoria</option>' + 
+          categoriasBrutas.map(cat => `<option value="${cat.id}">${cat.nome}</option>`).join('');
 
         const select = document.getElementById('categoria_id');
-        select.innerHTML = '<option value="">Sem categoria</option>';
-
-        if (Array.isArray(categorias)) {
-          categorias.forEach(cat => {
-            select.innerHTML += `<option value="${cat.id}">${cat.nome}</option>`;
-          });
-        }
+        const editSelect = document.getElementById('edit_categoria_id');
+        const contaSelect = document.getElementById('conta_categoria_id');
+        
+        if (select) select.innerHTML = optionsHTML;
+        if (editSelect) editSelect.innerHTML = optionsHTML;
+        if (contaSelect) contaSelect.innerHTML = optionsHTML;
       } catch (err) { console.error('Erro ao carregar select de categorias:', err); }
     }
 
-    // LISTAR CATEGORIAS NA TABELA (ABA CATEGORIAS)
+    // LISTAR CATEGORIAS NA TABELA (ABA CATEGORIAS) COM BOTÕES DE AÇÃO
     async function carregarCategoriasTabela() {
       try {
         const res = await fetch(`${API_BASE}/categorias`, { headers: getAuthHeaders() });
         const categorias = await res.json();
+        categoriasBrutas = Array.isArray(categorias) ? categorias : [];
 
         const tbody = document.getElementById('tabelaCategorias');
         tbody.innerHTML = '';
 
-        if (Array.isArray(categorias)) {
-          categorias.forEach(cat => {
-            tbody.innerHTML += `
-              <tr>
-                <td>${cat.id}</td>
-                <td>${cat.nome}</td>
-              </tr>
-            `;
-          });
-        }
+        categoriasBrutas.forEach(cat => {
+          tbody.innerHTML += `
+            <tr>
+              <td>${cat.id}</td>
+              <td>${cat.nome}</td>
+              <td>
+                <button class="btn-edit" onclick="abrirModalEditarCategoria(${cat.id})">Editar</button>
+                <button class="btn-delete" onclick="excluirCategoria(${cat.id})">Excluir</button>
+              </td>
+            </tr>
+          `;
+        });
       } catch (err) { console.error('Erro ao carregar tabela de categorias:', err); }
     }
 
@@ -603,7 +861,60 @@
       }
     });
 
-    // BUSCAR TRANSAÇÕES DO BACKEND
+    // FUNÇÕES DE EDIÇÃO E EXCLUSÃO DE CATEGORIAS
+    function abrirModalEditarCategoria(id) {
+      const cat = categoriasBrutas.find(item => item.id === id);
+      if (!cat) return alert('Categoria não encontrada.');
+
+      document.getElementById('edit_categoria_id_val').value = cat.id;
+      document.getElementById('edit_categoria_nome').value = cat.nome;
+      document.getElementById('modalEditarCategoria').style.display = 'flex';
+    }
+
+    function fecharModalEditarCategoria() {
+      document.getElementById('modalEditarCategoria').style.display = 'none';
+    }
+
+    document.getElementById('formEditarCategoria').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const id = document.getElementById('edit_categoria_id_val').value;
+      const nome = document.getElementById('edit_categoria_nome').value;
+
+      const res = await fetch(`${API_BASE}/categorias/${id}`, {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ nome })
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        alert('Categoria atualizada com sucesso!');
+        fecharModalEditarCategoria();
+        carregarCategoriasTabela();
+      } else {
+        alert(data.erro || 'Erro ao atualizar categoria.');
+      }
+    });
+
+    async function excluirCategoria(id) {
+      if (confirm('Deseja realmente excluir esta categoria?')) {
+        const res = await fetch(`${API_BASE}/categorias/${id}`, {
+          method: 'DELETE',
+          headers: getAuthHeaders()
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+          alert('Categoria excluída com sucesso!');
+          carregarCategoriasTabela();
+        } else {
+          alert(data.erro || 'Erro ao excluir categoria.');
+        }
+      }
+    }
+
+    // BUSCAR TRANSAÇÕES
     async function carregarTransacoes() {
       const mes = document.getElementById('filtroMes').value;
       const ano = document.getElementById('filtroAno').value;
@@ -614,14 +925,30 @@
         
         const resposta = await res.json();
         transacoesBrutas = resposta.transacoes || resposta;
-        totaisAtuais = resposta.totais || { receitas: 0, despesas: 0, saldo: 0 };
 
-        atualizarExibicaoTotais();
+        popularOpcoesFiltroCategorias();
         filtrarEProcessarTabela();
       } catch (err) { console.error(err); }
     }
 
-    // LÓGICA DE ORDENAÇÃO
+    function popularOpcoesFiltroCategorias() {
+      const container = document.getElementById('options-categoria_nome');
+      if (!container) return;
+
+      const categoriasUnicas = [...new Set(transacoesBrutas.map(t => t.categoria_nome || 'Sem categoria'))];
+
+      container.innerHTML = categoriasUnicas.map(cat => `
+        <label>
+          <input type="checkbox" value="${cat}" onchange="filtrarEProcessarTabela()" class="chk-filter-categoria"> ${cat}
+        </label>
+      `).join('');
+    }
+
+    function getValoresSelecionados(className) {
+      const checkboxes = document.querySelectorAll(`.${className}:checked`);
+      return Array.from(checkboxes).map(cb => cb.value.toUpperCase());
+    }
+
     function ordenarPor(coluna) {
       if (colunaOrdenacao === coluna) {
         direcaoOrdenacao = direcaoOrdenacao === 'asc' ? 'desc' : 'asc';
@@ -647,41 +974,56 @@
       });
     }
 
-    // LÓGICA DE FILTRAGEM POR COLUNA E RENDERIZAÇÃO
     function filtrarEProcessarTabela() {
       const filterDesc = (document.getElementById('col-filter-descricao').value || '').toLowerCase();
-      const filterCat = (document.getElementById('col-filter-categoria_nome').value || '').toLowerCase();
       const filterValor = (document.getElementById('col-filter-valor').value || '').toLowerCase();
       const filterDataLanc = (document.getElementById('col-filter-data_lancamento').value || '').toLowerCase();
       const filterDataVenc = (document.getElementById('col-filter-data_vencimento').value || '').toLowerCase();
       const filterObs = (document.getElementById('col-filter-observacao').value || '').toLowerCase();
-      const filterTipo = (document.getElementById('col-filter-tipo').value || '').toUpperCase();
+
+      const selectedTipos = getValoresSelecionados('chk-filter-tipo');
+      const selectedCats = getValoresSelecionados('chk-filter-categoria');
+
+      const temFiltroAtivo = filterDesc || filterValor || filterDataLanc || filterDataVenc || filterObs || selectedTipos.length > 0 || selectedCats.length > 0;
+      document.getElementById('barraAlertaFiltros').style.display = temFiltroAtivo ? 'flex' : 'none';
 
       let filtradas = transacoesBrutas.filter(t => {
         const desc = (t.descricao || '').toLowerCase();
-        const cat = (t.categoria_nome || '').toLowerCase();
+        const cat = (t.categoria_nome || 'Sem categoria').toUpperCase();
         const val = String(t.valor || '');
         const obs = (t.observacao || '').toLowerCase();
         const tipo = (t.tipo || '').toUpperCase();
 
-        const dataLancStr = new Date(t.data_lancamento).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
-        const dataVencObj = new Date(t.data_vencimento);
-        const mesVenc = String(dataVencObj.getUTCMonth() + 1).padStart(2, '0');
-        const anoVenc = dataVencObj.getUTCFullYear();
-        const mesAnoVencStr = `${mesVenc}/${anoVenc}`;
+        const dataLancStr = formatarDataBR(t.data_lancamento);
+        const mesAnoVencStr = extrairMesAnoVencimento(t.data_vencimento);
 
         const matchDesc = desc.includes(filterDesc);
-        const matchCat = cat.includes(filterCat);
         const matchVal = val.includes(filterValor);
         const matchDataLanc = dataLancStr.includes(filterDataLanc);
         const matchDataVenc = mesAnoVencStr.includes(filterDataVenc);
         const matchObs = obs.includes(filterObs);
-        const matchTipo = !filterTipo || tipo === filterTipo;
+        const matchTipo = selectedTipos.length === 0 || selectedTipos.includes(tipo);
+        const matchCat = selectedCats.length === 0 || selectedCats.includes(cat);
 
-        return matchDesc && matchCat && matchVal && matchDataLanc && matchDataVenc && matchObs && matchTipo;
+        return matchDesc && matchVal && matchDataLanc && matchDataVenc && matchObs && matchTipo && matchCat;
       });
 
-      // ORDENAÇÃO
+      let novasReceitas = 0;
+      let novasDespesas = 0;
+
+      filtradas.forEach(t => {
+        const v = parseFloat(t.valor) || 0;
+        if (t.tipo === 'RECEITA') novasReceitas += v;
+        if (t.tipo === 'DESPESA') novasDespesas += v;
+      });
+
+      totaisAtuais = {
+        receitas: novasReceitas,
+        despesas: novasDespesas,
+        saldo: novasReceitas - novasDespesas
+      };
+      atualizarExibicaoTotais();
+
       filtradas.sort((a, b) => {
         let valA = a[colunaOrdenacao];
         let valB = b[colunaOrdenacao];
@@ -702,19 +1044,20 @@
         return 0;
       });
 
-      // RENDERIZAR NA TABELA
       const tbody = document.getElementById('tabelaTransacoes');
       tbody.innerHTML = '';
 
       filtradas.forEach(t => {
-        const dataLanc = new Date(t.data_lancamento).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
-        
-        const dataVencObj = new Date(t.data_vencimento);
-        const mesVenc = String(dataVencObj.getUTCMonth() + 1).padStart(2, '0');
-        const anoVenc = dataVencObj.getUTCFullYear();
-        const mesAnoVencimento = `${mesVenc}/${anoVenc}`;
+        const dataLanc = formatarDataBR(t.data_lancamento);
+        const mesAnoVencimento = extrairMesAnoVencimento(t.data_vencimento);
 
-        const obsTexto = t.observacao ? `<span title="${t.observacao}">📝 Info</span>` : '-';
+        let obsTexto = '-';
+        if (t.observacao) {
+          const obsLimpa = t.observacao.trim();
+          const obsResumida = obsLimpa.length > 20 ? obsLimpa.substring(0, 20) + '...' : obsLimpa;
+          obsTexto = `<span title="${obsLimpa}" style="cursor: pointer;">${obsResumida}</span>`;
+        }
+
         const categoriaNome = t.categoria_nome || '-';
 
         tbody.innerHTML += `
@@ -726,22 +1069,272 @@
             <td>${mesAnoVencimento}</td>
             <td>${obsTexto}</td>
             <td>${t.tipo}</td>
-            <td><button class="btn-delete" onclick="excluirTransacao(${t.id})">Excluir</button></td>
+            <td>
+              <button class="btn-edit" onclick="abrirModalEditar(${t.id})">Editar</button>
+              <button class="btn-delete" onclick="prepararExclusaoEmLote(${t.id})">Excluir</button>
+            </td>
           </tr>
         `;
       });
     }
 
-    // SALVAR TRANSAÇÃO
+    function limparTodosFiltros() {
+      document.querySelectorAll('.th-filter-input').forEach(i => i.value = '');
+      document.querySelectorAll('.dropdown-content input[type="checkbox"]').forEach(c => c.checked = false);
+      filtrarEProcessarTabela();
+    }
+
+    // ==========================================
+    // MÓDULO: CONTAS A PAGAR / RECEBER
+    // ==========================================
+    async function carregarContasRegistro() {
+      const mes = document.getElementById('filtroContasMes').value;
+      const ano = document.getElementById('filtroContasAno').value;
+
+      try {
+        const res = await fetch(`${API_BASE}/contas?mes=${mes}&ano=${ano}`, { headers: getAuthHeaders() });
+        if (res.status === 401) return fazerLogout();
+        
+        contasBrutas = await res.json();
+        renderizarTabelaContas();
+      } catch (err) { console.error('Erro ao carregar contas:', err); }
+    }
+
+    function renderizarTabelaContas() {
+      const tbody = document.getElementById('tabelaContasRegistro');
+      tbody.innerHTML = '';
+
+      if (!Array.isArray(contasBrutas)) return;
+
+      contasBrutas.forEach(c => {
+        const vencimentoBR = formatarDataBR(c.data_vencimento);
+        const pagamentoBR = formatarDataBR(c.data_pagamento);
+        const statusHTML = c.pago 
+          ? `<span class="status-pago">${c.tipo === 'PAGAR' ? 'PAGO' : 'RECEBIDO'}</span>` 
+          : `<span class="status-pendente">PENDENTE</span>`;
+
+        tbody.innerHTML += `
+          <tr>
+            <td style="text-align: center;">
+              <input type="checkbox" ${c.pago ? 'checked' : ''} onchange="alterarStatusBaixa(${c.id}, this.checked)">
+            </td>
+            <td>${c.descricao}</td>
+            <td><strong class="${c.tipo}-txt">${c.tipo}</strong></td>
+            <td>${c.categoria_nome || '-'}</td>
+            <td>R$ ${parseFloat(c.valor).toFixed(2)}</td>
+            <td>${vencimentoBR}</td>
+            <td>${pagamentoBR}</td>
+            <td>${statusHTML}</td>
+            <td>
+              <button class="btn-edit" onclick="abrirModalEditarConta(${c.id})">Editar</button>
+              <button class="btn-delete" onclick="excluirConta(${c.id})">Excluir</button>
+            </td>
+          </tr>
+        `;
+      });
+    }
+
+    async function abrirModalNovaConta() {
+      await carregarCategoriasSelect();
+      document.getElementById('formContaRegistro').reset();
+      document.getElementById('conta_id').value = '';
+      document.getElementById('tituloModalConta').innerText = '📋 Nova Conta';
+      document.getElementById('modalConta').style.display = 'flex';
+    }
+
+    async function abrirModalEditarConta(id) {
+      await carregarCategoriasSelect();
+      const c = contasBrutas.find(item => item.id === id);
+      if (!c) return;
+
+      document.getElementById('conta_id').value = c.id;
+      document.getElementById('conta_descricao').value = c.descricao;
+      document.getElementById('conta_tipo').value = c.tipo;
+      document.getElementById('conta_categoria_id').value = c.categoria_id || '';
+      document.getElementById('conta_valor').value = parseFloat(c.valor);
+      document.getElementById('conta_data_vencimento').value = c.data_vencimento ? c.data_vencimento.split('T')[0] : '';
+      document.getElementById('conta_observacao').value = c.observacao || '';
+
+      document.getElementById('tituloModalConta').innerText = '✏️ Editar Conta';
+      document.getElementById('modalConta').style.display = 'flex';
+    }
+
+    function fecharModalConta() {
+      document.getElementById('modalConta').style.display = 'none';
+    }
+
+    document.getElementById('formContaRegistro').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const id = document.getElementById('conta_id').value;
+      const bodyData = {
+        descricao: document.getElementById('conta_descricao').value,
+        tipo: document.getElementById('conta_tipo').value,
+        categoria_id: document.getElementById('conta_categoria_id').value || null,
+        valor: parseFloat(document.getElementById('conta_valor').value),
+        data_vencimento: document.getElementById('conta_data_vencimento').value,
+        observacao: document.getElementById('conta_observacao').value
+      };
+
+      const url = id ? `${API_BASE}/contas/${id}` : `${API_BASE}/contas`;
+      const method = id ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method,
+        headers: getAuthHeaders(),
+        body: JSON.stringify(bodyData)
+      });
+
+      if (res.ok) {
+        alert(id ? 'Conta atualizada com sucesso!' : 'Conta cadastrada com sucesso!');
+        fecharModalConta();
+        carregarContasRegistro();
+      } else {
+        alert('Erro ao salvar conta.');
+      }
+    });
+
+    async function alterarStatusBaixa(id, marcarComoPago) {
+      let dataPagamento = null;
+
+      if (marcarComoPago) {
+        const dataInput = prompt("Informe a data do pagamento/recebimento (AAAA-MM-DD):", new Date().toISOString().split('T')[0]);
+        if (!dataInput) {
+          carregarContasRegistro();
+          return;
+        }
+        dataPagamento = dataInput;
+      }
+
+      const res = await fetch(`${API_BASE}/contas/${id}/baixa`, {
+        method: 'PATCH',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ pago: marcarComoPago, data_pagamento: dataPagamento })
+      });
+
+      if (res.ok) {
+        carregarContasRegistro();
+      } else {
+        alert('Erro ao atualizar status do pagamento.');
+        carregarContasRegistro();
+      }
+    }
+
+    async function excluirConta(id) {
+      if (confirm('Deseja realmente excluir esta conta?')) {
+        const res = await fetch(`${API_BASE}/contas/${id}`, { method: 'DELETE', headers: getAuthHeaders() });
+        if (res.ok) carregarContasRegistro();
+      }
+    }
+
+    // PREPARAR E BUSCAR TRANSAÇÕES SEMELHANTES FUTURAS NO BACKEND
+    async function prepararExclusaoEmLote(id) {
+      const alvo = transacoesBrutas.find(t => t.id === id);
+      if (!alvo) return;
+
+      try {
+        const params = new URLSearchParams({
+          descricao: alvo.descricao,
+          valor: alvo.valor,
+          tipo: alvo.tipo,
+          data_vencimento: alvo.data_vencimento
+        });
+
+        const res = await fetch(`${API_BASE}/transacoes/semelhantes?${params.toString()}`, { 
+          headers: getAuthHeaders() 
+        });
+        
+        if (!res.ok) throw new Error('Erro na resposta do servidor');
+        
+        const semelhantes = await res.json();
+
+        if (!Array.isArray(semelhantes) || semelhantes.length <= 1) {
+          if (confirm('Mover lançamento para a lixeira?')) {
+            await executarExclusaoLote([id]);
+          }
+          return;
+        }
+
+        const tbody = document.getElementById('tabelaExcluirLote');
+        tbody.innerHTML = '';
+
+        semelhantes.forEach(t => {
+          const mesAno = extrairMesAnoVencimento(t.data_vencimento);
+          tbody.innerHTML += `
+            <tr>
+              <td style="text-align: center;">
+                <input type="checkbox" value="${t.id}" class="chk-excluir-lote" checked>
+              </td>
+              <td>${t.descricao}</td>
+              <td>${mesAno}</td>
+              <td>R$ ${parseFloat(t.valor).toFixed(2)}</td>
+            </tr>
+          `;
+        });
+
+        document.getElementById('chkMarcarTodasExcluir').checked = true;
+        document.getElementById('modalExcluirLote').style.display = 'flex';
+
+      } catch (err) {
+        console.error('Erro ao buscar parcelas semelhantes:', err);
+        if (confirm('Mover lançamento para a lixeira?')) {
+          await executarExclusaoLote([id]);
+        }
+      }
+    }
+
+    function alternarTodasExclusao(status) {
+      document.querySelectorAll('.chk-excluir-lote').forEach(c => c.checked = status);
+    }
+
+    function fecharModalExcluirLote() {
+      document.getElementById('modalExcluirLote').style.display = 'none';
+    }
+
+    async function confirmarExclusaoLote() {
+      const selecionadas = Array.from(document.querySelectorAll('.chk-excluir-lote:checked')).map(c => parseInt(c.value));
+      
+      if (selecionadas.length === 0) {
+        return alert('Selecione ao menos uma transação para excluir.');
+      }
+
+      fecharModalExcluirLote();
+      await executarExclusaoLote(selecionadas);
+    }
+
+    async function executarExclusaoLote(idsArray) {
+      try {
+        const promessas = idsArray.map(id => 
+          fetch(`${API_BASE}/transacoes/${id}`, {
+            method: 'DELETE',
+            headers: getAuthHeaders()
+          })
+        );
+
+        await Promise.all(promessas);
+        carregarTransacoes();
+      } catch (err) {
+        console.error('Erro ao excluir em lote:', err);
+        alert('Ocorreu um erro ao tentar excluir os itens.');
+      }
+    }
+
+    // CADASTRAR NOVA TRANSAÇÃO
     document.getElementById('formTransacao').addEventListener('submit', async (e) => {
       e.preventDefault();
+
+      const dataLancamento = document.getElementById('data_lancamento').value;
+      const compVenc = document.getElementById('competencia_vencimento').value;
+      
+      const dataVencimentoFormatada = `${compVenc}-10`;
+
       const novaTransacao = {
         descricao: document.getElementById('descricao').value,
         categoria_id: document.getElementById('categoria_id').value || null,
         valor: parseFloat(document.getElementById('valor').value),
         tipo: document.getElementById('tipo').value,
         parcelas: parseInt(document.getElementById('parcelas').value) || 1,
-        data_lancamento: document.getElementById('data_lancamento').value,
+        data_lancamento: dataLancamento,
+        data_vencimento: dataVencimentoFormatada,
         observacao: document.getElementById('observacao').value,
         status: "PENDENTE"
       };
@@ -757,22 +1350,75 @@
         document.getElementById('formTransacao').reset();
         document.getElementById('parcelas').value = 1;
         document.getElementById('data_lancamento').valueAsDate = new Date();
+        sugerirCompetenciaVencimento();
         trocarAba('consulta');
       } else {
         alert('Erro ao cadastrar transação.');
       }
     });
 
-    // EXCLUIR
-    async function excluirTransacao(id) {
-      if (confirm('Mover lançamento para a lixeira?')) {
-        await fetch(`${API_BASE}/transacoes/${id}`, {
-          method: 'DELETE',
-          headers: getAuthHeaders()
-        });
-        carregarTransacoes();
-      }
+    // EDIÇÃO DE TRANSAÇÃO (MODAL)
+    async function abrirModalEditar(id) {
+      await carregarCategoriasSelect();
+      const t = transacoesBrutas.find(item => item.id === id);
+      if (!t) return alert('Transação não encontrada.');
+
+      document.getElementById('edit_id').value = t.id;
+      document.getElementById('edit_descricao').value = t.descricao;
+      document.getElementById('edit_categoria_id').value = t.categoria_id || '';
+      document.getElementById('edit_valor').value = parseFloat(t.valor);
+      document.getElementById('edit_tipo').value = t.tipo;
+      
+      const dataLancFormatada = t.data_lancamento ? t.data_lancamento.split('T')[0] : '';
+      document.getElementById('edit_data_lancamento').value = dataLancFormatada;
+      
+      const parteVenc = t.data_vencimento ? t.data_vencimento.split('T')[0] : '';
+      const [anoVenc, mesVenc] = parteVenc.split('-');
+      document.getElementById('edit_competencia_vencimento').value = `${anoVenc}-${mesVenc}`;
+
+      document.getElementById('edit_observacao').value = t.observacao || '';
+
+      document.getElementById('modalEditar').style.display = 'flex';
     }
+
+    function fecharModalEditar() {
+      document.getElementById('modalEditar').style.display = 'none';
+    }
+
+    // SALVAR EDIÇÃO
+    document.getElementById('formEditarTransacao').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const id = document.getElementById('edit_id').value;
+      
+      const dataLancamento = document.getElementById('edit_data_lancamento').value;
+      const compVenc = document.getElementById('edit_competencia_vencimento').value;
+      
+      const dataVencimentoFormatada = `${compVenc}-10`;
+
+      const transacaoAtualizada = {
+        descricao: document.getElementById('edit_descricao').value,
+        categoria_id: document.getElementById('edit_categoria_id').value || null,
+        valor: parseFloat(document.getElementById('edit_valor').value),
+        tipo: document.getElementById('edit_tipo').value,
+        data_lancamento: dataLancamento,
+        data_vencimento: dataVencimentoFormatada,
+        observacao: document.getElementById('edit_observacao').value
+      };
+
+      const res = await fetch(`${API_BASE}/transacoes/${id}`, {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(transacaoAtualizada)
+      });
+
+      if (res.ok) {
+        alert('Transação atualizada com sucesso!');
+        fecharModalEditar();
+        carregarTransacoes();
+      } else {
+        alert('Erro ao atualizar transação.');
+      }
+    });
 
     // LIXEIRA
     async function abrirLixeira() {
@@ -782,7 +1428,8 @@
       tbody.innerHTML = '';
 
       dados.forEach(t => {
-        const dataExclusao = new Date(t.deleted_at).toLocaleDateString('pt-BR');
+        const dataExclusao = formatarDataBR(t.deleted_at);
+
         tbody.innerHTML += `
           <tr>
             <td>${t.descricao}</td>

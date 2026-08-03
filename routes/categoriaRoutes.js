@@ -9,4 +9,8 @@ router.use(autenticarToken);
 router.get('/', categoriaController.listarCategorias);
 router.post('/', categoriaController.criarCategoria);
 
+// Novas rotas para atualizar e excluir categorias por ID
+router.put('/:id', categoriaController.atualizarCategoria);
+router.delete('/:id', categoriaController.deletarCategoria);
+
 module.exports = router;
