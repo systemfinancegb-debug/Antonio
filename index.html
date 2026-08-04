@@ -62,6 +62,7 @@
     
     button { background-color: #27ae60; color: white; border: none; font-weight: bold; cursor: pointer; transition: 0.2s; }
     button:hover { background-color: #219150; }
+    button:disabled { background-color: #95a5a6; cursor: not-allowed; }
     
     .btn-edit { background-color: #3498db; padding: 6px 12px; font-size: 12px; margin-right: 4px; }
     .btn-edit:hover { background-color: #2980b9; }
@@ -381,7 +382,7 @@
             <textarea id="observacao" rows="2" placeholder="Detalhes adicionais, notas..."></textarea>
           </div>
 
-          <button type="submit">Salvar Transação</button>
+          <button type="submit" id="btnSalvarTransacao">Salvar Transação</button>
         </form>
       </div>
     </div>
@@ -1083,13 +1084,21 @@
       }
     }
 
-    // CADASTRAR NOVA TRANSAÇÃO
+    // CADASTRAR NOVA TRANSAÇÃO (COM TRAVA DE DUPLO CLIQUE)
+    let enviandoTransacao = false;
+
     document.getElementById('formTransacao').addEventListener('submit', async (e) => {
       e.preventDefault();
 
+      if (enviandoTransacao) return;
+      enviandoTransacao = true;
+
+      const btnSubmit = document.getElementById('btnSalvarTransacao');
+      btnSubmit.disabled = true;
+      btnSubmit.innerText = 'Salvando...';
+
       const dataLancamento = document.getElementById('data_lancamento').value;
       const compVenc = document.getElementById('competencia_vencimento').value;
-      
       const dataVencimentoFormatada = `${compVenc}-10`;
 
       const novaTransacao = {
@@ -1104,21 +1113,29 @@
         status: "PENDENTE"
       };
 
-      const res = await fetch(`${API_BASE}/transacoes`, {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify(novaTransacao)
-      });
+      try {
+        const res = await fetch(`${API_BASE}/transacoes`, {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          body: JSON.stringify(novaTransacao)
+        });
 
-      if (res.ok) {
-        alert('Transação cadastrada com sucesso!');
-        document.getElementById('formTransacao').reset();
-        document.getElementById('parcelas').value = 1;
-        document.getElementById('data_lancamento').valueAsDate = new Date();
-        sugerirCompetenciaVencimento();
-        trocarAba('consulta');
-      } else {
-        alert('Erro ao cadastrar transação.');
+        if (res.ok) {
+          alert('Transação cadastrada com sucesso!');
+          document.getElementById('formTransacao').reset();
+          document.getElementById('parcelas').value = 1;
+          document.getElementById('data_lancamento').valueAsDate = new Date();
+          sugerirCompetenciaVencimento();
+          trocarAba('consulta');
+        } else {
+          alert('Erro ao cadastrar transação.');
+        }
+      } catch (err) {
+        alert('Erro de conexão ao salvar transação.');
+      } finally {
+        enviandoTransacao = false;
+        btnSubmit.disabled = false;
+        btnSubmit.innerText = 'Salvar Transação';
       }
     });
 
