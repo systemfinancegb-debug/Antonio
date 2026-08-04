@@ -1198,36 +1198,63 @@
       document.getElementById('modalEditar').style.display = 'none';
     }
 
-    // SALVAR EDIÇÃO (COM VERIFICAÇÃO DE PARCELAS SEMELHANTES)
+    // SALVAR EDIÇÃO (ATUALIZAÇÃO PARCIAL INTELIGENTE PARA FUTURAS)
     document.getElementById('formEditarTransacao').addEventListener('submit', async (e) => {
       e.preventDefault();
-      const id = document.getElementById('edit_id').value;
+      const id = parseInt(document.getElementById('edit_id').value);
       
-      const dataLancamento = document.getElementById('edit_data_lancamento').value;
-      const compVenc = document.getElementById('edit_competencia_vencimento').value;
-      const dataVencimentoFormatada = `${compVenc}-10`;
+      const alvoOriginal = transacoesBrutas.find(t => t.id === id);
+      if (!alvoOriginal) return alert('Transação original não encontrada.');
 
-      const transacaoAtualizada = {
-        descricao: document.getElementById('edit_descricao').value,
-        categoria_id: document.getElementById('edit_categoria_id').value || null,
-        valor: parseFloat(document.getElementById('edit_valor').value),
-        tipo: document.getElementById('edit_tipo').value,
-        data_lancamento: dataLancamento,
-        data_vencimento: dataVencimentoFormatada,
-        observacao: document.getElementById('edit_observacao').value
+      const dataLancamentoNova = document.getElementById('edit_data_lancamento').value;
+      const compVencNova = document.getElementById('edit_competencia_vencimento').value;
+      const dataVencimentoFormatadaNova = `${compVencNova}-10`;
+
+      const novaDescricao = document.getElementById('edit_descricao').value;
+      const novaCategoriaId = document.getElementById('edit_categoria_id').value || null;
+      const novoValor = parseFloat(document.getElementById('edit_valor').value);
+      const novoTipo = document.getElementById('edit_tipo').value;
+      const novaObservacao = document.getElementById('edit_observacao').value;
+
+      // Payload completo para a transação atual editada diretamente na tela
+      const transacaoAtualizadaCompleta = {
+        descricao: novaDescricao,
+        categoria_id: novaCategoriaId,
+        valor: novoValor,
+        tipo: novoTipo,
+        data_lancamento: dataLancamentoNova,
+        data_vencimento: dataVencimentoFormatadaNova,
+        observacao: novaObservacao
       };
 
-      window.payloadEdicaoTemp = transacaoAtualizada;
+      // Identifica APENAS os campos modificados em relação à original para as futuras
+      const camposAlterados = {};
+      if (novaDescricao !== alvoOriginal.descricao) camposAlterados.descricao = novaDescricao;
+      if (novaCategoriaId !== (alvoOriginal.categoria_id ? String(alvoOriginal.categoria_id) : '')) camposAlterados.categoria_id = novaCategoriaId;
+      if (novoValor !== parseFloat(alvoOriginal.valor)) camposAlterados.valor = novoValor;
+      if (novoTipo !== alvoOriginal.tipo) camposAlterados.tipo = novoTipo;
+      if (novaObservacao !== (alvoOriginal.observacao || '')) camposAlterados.observacao = novaObservacao;
+      
+      // Se a competência (mês/ano) mudou, calcula a diferença de meses para transpor proporcionalmente nas futuras
+      const vencOriginalStr = alvoOriginal.data_vencimento ? alvoOriginal.data_vencimento.split('T')[0] : '';
+      if (vencOriginalStr) {
+        const [anoOrig, mesOrig] = vencOriginalStr.split('-').map(Number);
+        const [anoNovo, mesNovo] = compVencNova.split('-').map(Number);
+        const diferencaMeses = (anoNovo - anoOrig) * 12 + (mesNovo - mesOrig);
+        if (diferencaMeses !== 0) {
+          camposAlterados._diferencaMeses = diferencaMeses;
+        }
+      }
+
+      window.payloadEdicaoTemp = transacaoAtualizadaCompleta;
+      window.camposParciaisTemp = camposAlterados;
 
       try {
-        const alvo = transacoesBrutas.find(t => t.id == id);
-        if (!alvo) return executarEdicaoLote([id], transacaoAtualizada);
-
         const params = new URLSearchParams({
-          descricao: alvo.descricao,
-          valor: alvo.valor,
-          tipo: alvo.tipo,
-          data_vencimento: alvo.data_vencimento
+          descricao: alvoOriginal.descricao,
+          valor: alvoOriginal.valor,
+          tipo: alvoOriginal.tipo,
+          data_vencimento: alvoOriginal.data_vencimento
         });
 
         const res = await fetch(`${API_BASE}/transacoes/semelhantes?${params.toString()}`, { 
@@ -1238,9 +1265,10 @@
         
         listaSemelhantesEdicao = await res.json();
 
-        if (!Array.isArray(listaSemelhantesEdicao) || listaSemelhantesEdicao.length <= 1) {
+        // Se houver apenas 1 (ela mesma) ou nenhum campo relevante alterado, salva direto apenas ela
+        if (!Array.isArray(listaSemelhantesEdicao) || listaSemelhantesEdicao.length <= 1 || Object.keys(camposAlterados).length === 0) {
           fecharModalEditar();
-          await executarEdicaoLote([id], transacaoAtualizada);
+          await executarEdicaoLote([id], transacaoAtualizadaCompleta, null);
           return;
         }
 
@@ -1250,10 +1278,14 @@
 
         listaSemelhantesEdicao.forEach(t => {
           const mesAno = extrairMesAnoVencimento(t.data_vencimento);
+          // Marca por padrão apenas as parcelas FUTURAS (com ID maior que o atual)
+          const ehFutura = t.id > id;
+          const marcado = ehFutura ? 'checked' : '';
+
           tbody.innerHTML += `
             <tr>
               <td style="text-align: center;">
-                <input type="checkbox" value="${t.id}" class="chk-editar-lote" checked>
+                <input type="checkbox" value="${t.id}" class="chk-editar-lote" ${marcado}>
               </td>
               <td>${t.descricao}</td>
               <td>${mesAno}</td>
@@ -1262,13 +1294,12 @@
           `;
         });
 
-        document.getElementById('chkMarcarTodasEditar').checked = true;
         document.getElementById('modalEditarLote').style.display = 'flex';
 
       } catch (err) {
         console.error('Erro ao verificar parcelas semelhantes:', err);
         fecharModalEditar();
-        await executarEdicaoLote([id], transacaoAtualizada);
+        await executarEdicaoLote([id], transacaoAtualizadaCompleta, null);
       }
     });
 
@@ -1288,18 +1319,50 @@
       }
 
       fecharModalEditarLote();
-      await executarEdicaoLote(selecionadas, window.payloadEdicaoTemp);
+      const idPrincipal = parseInt(document.getElementById('edit_id').value);
+      
+      // A principal recebe o payload completo editado na tela
+      await executarEdicaoLote([idPrincipal], window.payloadEdicaoTemp, null);
+
+      // As demais selecionadas recebem APENAS os campos alterados (evitando clonagem)
+      const demaisSelecionadas = selecionadas.filter(id => id !== idPrincipal);
+      if (demaisSelecionadas.length > 0) {
+        await executarEdicaoLote(demaisSelecionadas, null, window.camposParciaisTemp);
+      }
     }
 
-    async function executarEdicaoLote(idsArray, payload) {
+    async function executarEdicaoLote(idsArray, payload, camposParciais) {
       try {
-        const promessas = idsArray.map(id => 
-          fetch(`${API_BASE}/transacoes/${id}`, {
+        const promessas = idsArray.map(id => {
+          let corpoEnvio = payload;
+          if (camposParciais) {
+            const itemAtual = transacoesBrutas.find(t => t.id === id);
+            if (!itemAtual) return Promise.resolve();
+
+            corpoEnvio = {
+              descricao: camposParciais.descricao !== undefined ? camposParciais.descricao : itemAtual.descricao,
+              categoria_id: camposParciais.categoria_id !== undefined ? camposParciais.categoria_id : itemAtual.categoria_id,
+              valor: camposParciais.valor !== undefined ? camposParciais.valor : parseFloat(itemAtual.valor),
+              tipo: camposParciais.tipo !== undefined ? camposParciais.tipo : itemAtual.tipo,
+              observacao: camposParciais.observacao !== undefined ? camposParciais.observacao : itemAtual.observacao,
+              data_lancamento: itemAtual.data_lancamento ? itemAtual.data_lancamento.split('T')[0] : '',
+              data_vencimento: itemAtual.data_vencimento
+            };
+
+            // Desloca proporcionalmente mantendo o espaçamento original das parcelas seguintes se houve mudança de mês
+            if (camposParciais._diferencaMeses !== undefined && itemAtual.data_vencimento) {
+              const [anoOri, mesOri, diaOri] = itemAtual.data_vencimento.split('T')[0].split('-').map(Number);
+              let dataObj = new Date(anoOri, (mesOri - 1) + camposParciais._diferencaMeses, diaOri || 10);
+              corpoEnvio.data_vencimento = dataObj.toISOString().split('T')[0];
+            }
+          }
+
+          return fetch(`${API_BASE}/transacoes/${id}`, {
             method: 'PUT',
             headers: getAuthHeaders(),
-            body: JSON.stringify(payload)
-          })
-        );
+            body: JSON.stringify(corpoEnvio)
+          });
+        });
 
         await Promise.all(promessas);
         alert('Transação(ões) atualizada(s) com sucesso!');
