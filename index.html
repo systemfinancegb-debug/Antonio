@@ -1348,7 +1348,7 @@
       carregarTransacoes();
     }
 
-    // APLICA EXCLUSIVAMENTE OS CAMPOS ALTERADOS NAS PARCELAS FUTURAS SELECIONADAS (COM LIMPEZA DE DATAS E PAYLOAD)
+    // APLICA EXCLUSIVAMENTE OS CAMPOS ALTERADOS NAS PARCELAS FUTURAS SELECIONADAS (BLINDADO)
     async function confirmarReplicacaoParcelas() {
       const idsSelecionados = Array.from(document.querySelectorAll('.chk-parcela-futura:checked'))
                                    .map(c => parseInt(c.value));
@@ -1358,21 +1358,24 @@
         return;
       }
 
+      // Captura uma cópia segura local dos campos que mudaram
+      const alteracoesParaAplicar = { ...camposAlteradosDetectados };
+
       const promessas = idsSelecionados.map(async (id) => {
         const parcelaOriginal = listaParcelasParaAtualizar.find(p => p.id === id);
         if (!parcelaOriginal) return;
 
-        // Limpa as datas para o formato estrito AAAA-MM-DD (removendo T00:00:00 se houver)
+        // Limpa as datas para o formato estrito AAAA-MM-DD
         const dataVencLimpa = parcelaOriginal.data_vencimento ? String(parcelaOriginal.data_vencimento).split('T')[0] : '';
         const dataLancLimpa = parcelaOriginal.data_lancamento ? String(parcelaOriginal.data_lancamento).split('T')[0] : '';
 
-        // Montamos APENAS os campos esperados pela API, substituindo SOMENTE o que foi alterado
-        const payloadAtualizado = {
-          descricao: camposAlteradosDetectados.descricao !== undefined ? camposAlteradosDetectados.descricao : parcelaOriginal.descricao,
-          categoria_id: camposAlteradosDetectados.categoria_id !== undefined ? camposAlteradosDetectados.categoria_id : (parcelaOriginal.categoria_id || null),
-          valor: camposAlteradosDetectados.valor !== undefined ? parseFloat(camposAlteradosDetectados.valor) : parseFloat(parcelaOriginal.valor),
-          tipo: camposAlteradosDetectados.tipo !== undefined ? camposAlteradosDetectados.tipo : parcelaOriginal.tipo,
-          observacao: camposAlteradosDetectados.observacao !== undefined ? camposAlteradosDetectados.observacao : (parcelaOriginal.observacao || ''),
+        // Constrói o payload completo mesclando rigorosamente os dados originais com o que mudou
+        const payloadCompleto = {
+          descricao: alteracoesParaAplicar.descricao !== undefined ? alteracoesParaAplicar.descricao : parcelaOriginal.descricao,
+          categoria_id: alteracoesParaAplicar.categoria_id !== undefined ? alteracoesParaAplicar.categoria_id : (parcelaOriginal.categoria_id || null),
+          valor: alteracoesParaAplicar.valor !== undefined ? parseFloat(alteracoesParaAplicar.valor) : parseFloat(parcelaOriginal.valor),
+          tipo: alteracoesParaAplicar.tipo !== undefined ? alteracoesParaAplicar.tipo : parcelaOriginal.tipo,
+          observacao: alteracoesParaAplicar.observacao !== undefined ? alteracoesParaAplicar.observacao : (parcelaOriginal.observacao || ''),
           data_lancamento: dataLancLimpa,
           data_vencimento: dataVencLimpa,
           status: parcelaOriginal.status || "PENDENTE"
@@ -1381,7 +1384,7 @@
         const res = await fetch(`${API_BASE}/transacoes/${id}`, {
           method: 'PUT',
           headers: getAuthHeaders(),
-          body: JSON.stringify(payloadAtualizado)
+          body: JSON.stringify(payloadCompleto)
         });
 
         if (!res.ok) {
@@ -1396,7 +1399,7 @@
         alert('Parcelas atualizadas com sucesso!');
       } catch (err) {
         console.error('Erro na replicação em lote:', err);
-        alert('Ocorreu um erro ao atualizar algumas parcelas. Verifique o Console (F12) para ver os detalhes da API.');
+        alert('Ocorreu um erro ao atualizar algumas parcelas. Verifique o Console (F12).');
       } finally {
         fecharModalEditarLote();
         carregarTransacoes();
