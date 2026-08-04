@@ -137,6 +137,9 @@
 
     .RECEITA, .receita-txt { color: #27ae60; font-weight: bold; }
     .DESPESA, .despesa-txt { color: #e74c3c; font-weight: bold; }
+    .status-pendente { color: #e67e22; font-weight: bold; }
+    .status-pago { color: #27ae60; font-weight: bold; }
+    .status-recebido { color: #2980b9; font-weight: bold; }
 
     /* MODAIS */
     .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); justify-content: center; align-items: center; z-index: 1000; }
@@ -196,6 +199,7 @@
       <button class="tab-btn active" id="btnTabConsulta" onclick="trocarAba('consulta')">📊 Consultar Transações</button>
       <button class="tab-btn" id="btnTabNovo" onclick="trocarAba('novo')">➕ Novo Lançamento</button>
       <button class="tab-btn" id="btnTabCategorias" onclick="trocarAba('categorias')">🏷️ Categorias</button>
+      <button class="tab-btn" id="btnTabControle" onclick="trocarAba('controle')">📅 Controle de Vencimentos</button>
     </div>
 
     <!-- ABA 1: CONSULTAR TRANSAÇÕES -->
@@ -324,6 +328,21 @@
               </th>
 
               <th>
+                <div class="th-header" onclick="ordenarPor('status')">
+                  <span>Status</span>
+                  <span class="sort-icon" id="sort-status">↕</span>
+                </div>
+                <details class="dropdown-filtro">
+                  <summary class="btn-dropdown">Selecionar ▾</summary>
+                  <div class="dropdown-content" id="options-status">
+                    <label><input type="checkbox" value="PENDENTE" onchange="filtrarEProcessarTabela()" class="chk-filter-status"> Pendente</label>
+                    <label><input type="checkbox" value="PAGO" onchange="filtrarEProcessarTabela()" class="chk-filter-status"> Pago</label>
+                    <label><input type="checkbox" value="RECEBIDO" onchange="filtrarEProcessarTabela()" class="chk-filter-status"> Recebido</label>
+                  </div>
+                </details>
+              </th>
+
+              <th>
                 <div class="th-header">
                   <span>Ações</span>
                 </div>
@@ -396,6 +415,10 @@
             <label>Nome da Categoria:</label>
             <input type="text" id="nomeCategoria" required placeholder="Ex: Casa, Carro, Cartão X...">
           </div>
+          <div>
+            <label>Dia Padrão de Vencimento (1 a 31):</label>
+            <input type="number" id="diaVencimentoCategoria" min="1" max="31" placeholder="Ex: 10">
+          </div>
           <button type="submit">Salvar Categoria</button>
         </form>
       </div>
@@ -407,10 +430,43 @@
             <tr>
               <th>ID</th>
               <th>Nome</th>
+              <th>Dia Vencimento</th>
               <th>Ações</th>
             </tr>
           </thead>
           <tbody id="tabelaCategorias"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ABA 4: CONTROLE DE VENCIMENTOS E PAGAMENTOS -->
+    <div id="abaControle" class="tab-content">
+      <div class="card-full">
+        <h2>Controle de Pagamentos e Recebimentos por Categoria</h2>
+        <p style="font-size: 13px; color: #555;">Acompanhe os vencimentos cadastrados e altere o status para gerenciar o mês atual.</p>
+        
+        <div class="filtro-bar" style="margin-top: 15px;">
+          <label for="filtroMesControle">Mês Competência:</label>
+          <select id="filtroMesControle" onchange="carregarControleVencimentos()">
+            <option value="1">Janeiro</option><option value="2">Fevereiro</option><option value="3">Março</option>
+            <option value="4">Abril</option><option value="5">Maio</option><option value="6">Junho</option>
+            <option value="7">Julho</option><option value="8">Agosto</option><option value="9">Setembro</option>
+            <option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
+          </select>
+          <label for="filtroAnoControle">Ano:</label>
+          <input type="number" id="filtroAnoControle" style="width: 80px;" onchange="carregarControleVencimentos()">
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Categoria</th>
+              <th>Dia Vencimento</th>
+              <th>Status no Mês</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="tabelaControleVencimentos"></tbody>
         </table>
       </div>
     </div>
@@ -445,6 +501,14 @@
           <select id="edit_tipo">
             <option value="DESPESA">Despesa</option>
             <option value="RECEITA">Receita</option>
+          </select>
+        </div>
+        <div>
+          <label>Status:</label>
+          <select id="edit_status">
+            <option value="PENDENTE">Pendente</option>
+            <option value="PAGO">Pago</option>
+            <option value="RECEBIDO">Recebido</option>
           </select>
         </div>
         <div>
@@ -514,6 +578,10 @@
         <div>
           <label>Nome da Categoria:</label>
           <input type="text" id="edit_categoria_nome" required>
+        </div>
+        <div>
+          <label>Dia Padrão de Vencimento (1 a 31):</label>
+          <input type="number" id="edit_categoria_dia" min="1" max="31">
         </div>
         <button type="submit" style="margin-top: 10px;">Salvar Alterações</button>
       </form>
@@ -596,6 +664,8 @@
     const hoje = new Date();
     document.getElementById('filtroMes').value = hoje.getMonth() + 1;
     document.getElementById('filtroAno').value = hoje.getFullYear();
+    document.getElementById('filtroMesControle').value = hoje.getMonth() + 1;
+    document.getElementById('filtroAnoControle').value = hoje.getFullYear();
     document.getElementById('data_lancamento').valueAsDate = hoje;
     
     sugerirCompetenciaVencimento();
@@ -608,7 +678,6 @@
       }
     }
 
-    // EXTRAI MÊS/ANO DA STRING DIRETA DA DATA (EVITA TIMEZONE VOLTAR 1 DIA)
     function extrairMesAnoVencimento(dataStr) {
       if (!dataStr) return '-';
       const parteData = dataStr.split('T')[0];
@@ -640,6 +709,12 @@
         document.getElementById('abaCategorias').classList.add('active');
         document.getElementById('btnTabCategorias').classList.add('active');
         carregarCategoriasTabela();
+      } else if (nomeAba === 'controle') {
+        document.getElementById('abaControle').classList.add('active');
+        document.getElementById('btnTabControle').classList.add('active');
+        document.getElementById('filtroMesControle').value = document.getElementById('filtroMes').value;
+        document.getElementById('filtroAnoControle').value = document.getElementById('filtroAno').value;
+        carregarControleVencimentos();
       }
     }
 
@@ -765,7 +840,7 @@
       } catch (err) { console.error('Erro ao carregar select de categorias:', err); }
     }
 
-    // LISTAR CATEGORIAS NA TABELA (ABA CATEGORIAS) COM BOTÕES DE AÇÃO
+    // LISTAR CATEGORIAS NA TABELA (ABA CATEGORIAS)
     async function carregarCategoriasTabela() {
       try {
         const res = await fetch(`${API_BASE}/categorias`, { headers: getAuthHeaders() });
@@ -776,10 +851,12 @@
         tbody.innerHTML = '';
 
         categoriasBrutas.forEach(cat => {
+          const diaVenc = cat.dia_vencimento ? `Dia ${cat.dia_vencimento}` : '-';
           tbody.innerHTML += `
             <tr>
               <td>${cat.id}</td>
               <td>${cat.nome}</td>
+              <td>${diaVenc}</td>
               <td>
                 <button class="btn-edit" onclick="abrirModalEditarCategoria(${cat.id})">Editar</button>
                 <button class="btn-delete" onclick="excluirCategoria(${cat.id})">Excluir</button>
@@ -794,18 +871,19 @@
     document.getElementById('formCategoria').addEventListener('submit', async (e) => {
       e.preventDefault();
       const nome = document.getElementById('nomeCategoria').value;
+      const dia_vencimento = document.getElementById('diaVencimentoCategoria').value ? parseInt(document.getElementById('diaVencimentoCategoria').value) : null;
 
       const res = await fetch(`${API_BASE}/categorias`, {
         method: 'POST',
         headers: getAuthHeaders(),
-        body: JSON.stringify({ nome })
+        body: JSON.stringify({ nome, dia_vencimento })
       });
 
       const data = await res.json();
 
       if (res.ok) {
         alert('Categoria criada com sucesso!');
-        document.getElementById('nomeCategoria').value = '';
+        document.getElementById('formCategoria').reset();
         carregarCategoriasTabela();
       } else {
         alert(data.erro || 'Erro ao criar categoria.');
@@ -819,6 +897,7 @@
 
       document.getElementById('edit_categoria_id_val').value = cat.id;
       document.getElementById('edit_categoria_nome').value = cat.nome;
+      document.getElementById('edit_categoria_dia').value = cat.dia_vencimento || '';
       document.getElementById('modalEditarCategoria').style.display = 'flex';
     }
 
@@ -830,11 +909,12 @@
       e.preventDefault();
       const id = document.getElementById('edit_categoria_id_val').value;
       const nome = document.getElementById('edit_categoria_nome').value;
+      const dia_vencimento = document.getElementById('edit_categoria_dia').value ? parseInt(document.getElementById('edit_categoria_dia').value) : null;
 
       const res = await fetch(`${API_BASE}/categorias/${id}`, {
         method: 'PUT',
         headers: getAuthHeaders(),
-        body: JSON.stringify({ nome })
+        body: JSON.stringify({ nome, dia_vencimento })
       });
 
       const data = await res.json();
@@ -862,6 +942,66 @@
         } else {
           alert(data.erro || 'Erro ao excluir categoria.');
         }
+      }
+    }
+
+    // ABA 4: CONTROLE DE VENCIMENTOS
+    async function carregarControleVencimentos() {
+      const mes = document.getElementById('filtroMesControle').value;
+      const ano = document.getElementById('filtroAnoControle').value;
+
+      try {
+        const resCat = await fetch(`${API_BASE}/categorias`, { headers: getAuthHeaders() });
+        const categorias = await resCat.json();
+        
+        const resTx = await fetch(`${API_BASE}/transacoes?mes=${mes}&ano=${ano}`, { headers: getAuthHeaders() });
+        const respTx = await resTx.json();
+        const transacoes = respTx.transacoes || respTx;
+
+        const tbody = document.getElementById('tabelaControleVencimentos');
+        tbody.innerHTML = '';
+
+        (Array.isArray(categorias) ? categorias : []).forEach(cat => {
+          const txVinculada = transacoes.find(t => t.categoria_id === cat.id);
+          const statusAtual = txVinculada ? (txVinculada.status || 'PENDENTE') : 'PENDENTE';
+          const diaVenc = cat.dia_vencimento ? `Dia ${cat.dia_vencimento}` : 'Não informado';
+
+          tbody.innerHTML += `
+            <tr>
+              <td><strong>${cat.nome}</strong></td>
+              <td>${diaVenc}</td>
+              <td>
+                <select onchange="atualizarStatusCategoriaPorMes(${cat.id}, this.value, '${mes}', '${ano}')" style="padding: 5px; font-weight: bold;">
+                  <option value="PENDENTE" ${statusAtual === 'PENDENTE' ? 'selected' : ''}>Pendente</option>
+                  <option value="PAGO" ${statusAtual === 'PAGO' ? 'selected' : ''}>Pago</option>
+                  <option value="RECEBIDO" ${statusAtual === 'RECEBIDO' ? 'selected' : ''}>Recebido</option>
+                </select>
+              </td>
+              <td>
+                <button class="btn-edit" onclick="abrirModalEditarCategoria(${cat.id})">Configurar Dia Venc.</button>
+              </td>
+            </tr>
+          `;
+        });
+      } catch (err) {
+        console.error('Erro ao carregar controle de vencimentos:', err);
+      }
+    }
+
+    async function atualizarStatusCategoriaPorMes(categoriaId, novoStatus, mes, ano) {
+      try {
+        const res = await fetch(`${API_BASE}/transacoes/atualizar-status-lote`, {
+          method: 'PUT',
+          headers: getAuthHeaders(),
+          body: JSON.stringify({ categoria_id: categoriaId, mes, ano, status: novoStatus })
+        });
+        if (res.ok) {
+          carregarTransacoes();
+        } else {
+          alert('Erro ao atualizar status.');
+        }
+      } catch (err) {
+        console.error('Erro na requisição:', err);
       }
     }
 
@@ -912,7 +1052,7 @@
     }
 
     function atualizarIconesOrdenacao() {
-      const colunas = ['descricao', 'categoria_nome', 'valor', 'data_lancamento', 'data_vencimento', 'tipo'];
+      const colunas = ['descricao', 'categoria_nome', 'valor', 'data_lancamento', 'data_vencimento', 'tipo', 'status'];
       colunas.forEach(col => {
         const el = document.getElementById(`sort-${col}`);
         if (el) {
@@ -934,8 +1074,9 @@
 
       const selectedTipos = getValoresSelecionados('chk-filter-tipo');
       const selectedCats = getValoresSelecionados('chk-filter-categoria');
+      const selectedStatus = getValoresSelecionados('chk-filter-status');
 
-      const temFiltroAtivo = filterDesc || filterValor || filterDataLanc || filterDataVenc || filterObs || selectedTipos.length > 0 || selectedCats.length > 0;
+      const temFiltroAtivo = filterDesc || filterValor || filterDataLanc || filterDataVenc || filterObs || selectedTipos.length > 0 || selectedCats.length > 0 || selectedStatus.length > 0;
       document.getElementById('barraAlertaFiltros').style.display = temFiltroAtivo ? 'flex' : 'none';
 
       let filtradas = transacoesBrutas.filter(t => {
@@ -944,6 +1085,7 @@
         const val = String(t.valor || '');
         const obs = (t.observacao || '').toLowerCase();
         const tipo = (t.tipo || '').toUpperCase();
+        const status = (t.status || 'PENDENTE').toUpperCase();
 
         const dataLancStr = formatarDataBR(t.data_lancamento);
         const mesAnoVencStr = extrairMesAnoVencimento(t.data_vencimento);
@@ -955,8 +1097,9 @@
         const matchObs = obs.includes(filterObs);
         const matchTipo = selectedTipos.length === 0 || selectedTipos.includes(tipo);
         const matchCat = selectedCats.length === 0 || selectedCats.includes(cat);
+        const matchStatus = selectedStatus.length === 0 || selectedStatus.includes(status);
 
-        return matchDesc && matchVal && matchDataLanc && matchDataVenc && matchObs && matchTipo && matchCat;
+        return matchDesc && matchVal && matchDataLanc && matchDataVenc && matchObs && matchTipo && matchCat && matchStatus;
       });
 
       let novasReceitas = 0;
@@ -1010,6 +1153,10 @@
         }
 
         const categoriaNome = t.categoria_nome || '-';
+        const statusTransacao = t.status || 'PENDENTE';
+        let classeStatus = 'status-pendente';
+        if (statusTransacao === 'PAGO') classeStatus = 'status-pago';
+        if (statusTransacao === 'RECEBIDO') classeStatus = 'status-recebido';
 
         tbody.innerHTML += `
           <tr>
@@ -1020,6 +1167,7 @@
             <td>${mesAnoVencimento}</td>
             <td>${obsTexto}</td>
             <td>${t.tipo}</td>
+            <td class="${classeStatus}">${statusTransacao}</td>
             <td>
               <button class="btn-edit" onclick="abrirModalEditar(${t.id})">Editar</button>
               <button class="btn-delete" onclick="prepararExclusaoEmLote(${t.id})">Excluir</button>
@@ -1127,7 +1275,7 @@
       }
     }
 
-    // CADASTRAR NOVA TRANSAÇÃO (COM TRAVA DE DUPLO CLIQUE)
+    // CADASTRAR NOVA TRANSAÇÃO
     let enviandoTransacao = false;
 
     document.getElementById('formTransacao').addEventListener('submit', async (e) => {
@@ -1182,13 +1330,12 @@
       }
     });
 
-    // EDIÇÃO DE TRANSAÇÃO (MODAL COM SUPORTE A REPLICAÇÃO SELETIVA EM PARCELAS)
+    // EDIÇÃO DE TRANSAÇÃO
     async function abrirModalEditar(id) {
       await carregarCategoriasSelect();
       const t = transacoesBrutas.find(item => item.id === id);
       if (!t) return alert('Transação não encontrada.');
 
-      // Guarda clone exato para comparação de mudanças no envio
       transacaoOriginalEdicao = { ...t };
 
       document.getElementById('edit_id').value = t.id;
@@ -1196,6 +1343,7 @@
       document.getElementById('edit_categoria_id').value = t.categoria_id || '';
       document.getElementById('edit_valor').value = parseFloat(t.valor);
       document.getElementById('edit_tipo').value = t.tipo;
+      document.getElementById('edit_status').value = t.status || 'PENDENTE';
       
       const dataLancFormatada = t.data_lancamento ? t.data_lancamento.split('T')[0] : '';
       document.getElementById('edit_data_lancamento').value = dataLancFormatada;
@@ -1213,14 +1361,12 @@
       document.getElementById('modalEditar').style.display = 'none';
     }
 
-    // SALVAR EDIÇÃO E APURAR REPLICAÇÃO EM PARCELAS FUTURAS
     document.getElementById('formEditarTransacao').addEventListener('submit', async (e) => {
       e.preventDefault();
       const id = parseInt(document.getElementById('edit_id').value);
       
       const dataLancamento = document.getElementById('edit_data_lancamento').value;
       const compVenc = document.getElementById('edit_competencia_vencimento').value;
-      
       const dataVencimentoFormatada = `${compVenc}-10`;
 
       const transacaoAtualizada = {
@@ -1228,12 +1374,12 @@
         categoria_id: document.getElementById('edit_categoria_id').value ? parseInt(document.getElementById('edit_categoria_id').value) : null,
         valor: parseFloat(document.getElementById('edit_valor').value),
         tipo: document.getElementById('edit_tipo').value,
+        status: document.getElementById('edit_status').value,
         data_lancamento: dataLancamento,
         data_vencimento: dataVencimentoFormatada,
         observacao: document.getElementById('edit_observacao').value.trim()
       };
 
-      // DETECTAMOS APENAS OS CAMPOS REPLICÁVEIS QUE MUDARAM
       camposAlteradosDetectados = {};
       if (transacaoAtualizada.descricao !== transacaoOriginalEdicao.descricao) {
         camposAlteradosDetectados.descricao = transacaoAtualizada.descricao;
@@ -1248,6 +1394,9 @@
       if (transacaoAtualizada.tipo !== transacaoOriginalEdicao.tipo) {
         camposAlteradosDetectados.tipo = transacaoAtualizada.tipo;
       }
+      if (transacaoAtualizada.status !== (transacaoOriginalEdicao.status || 'PENDENTE')) {
+        camposAlteradosDetectados.status = transacaoAtualizada.status;
+      }
       if (transacaoAtualizada.observacao !== (transacaoOriginalEdicao.observacao || '').trim()) {
         camposAlteradosDetectados.observacao = transacaoAtualizada.observacao;
       }
@@ -1261,7 +1410,6 @@
       if (res.ok) {
         fecharModalEditar();
         const nomesCampos = Object.keys(camposAlteradosDetectados);
-        // Se mudou algum campo replicável, pergunta se quer aplicar em parcelas futuras
         if (nomesCampos.length > 0) {
           await verificarParcelasFuturas(id, transacaoOriginalEdicao);
         } else {
@@ -1273,7 +1421,6 @@
       }
     });
 
-    // BUSCA PARCELAS FUTURAS DA TRANSAÇÃO EDITADA (AJUSTADO PARA BLINDAR COMPARAÇÃO DE DATAS)
     async function verificarParcelasFuturas(idEditado, original) {
       try {
         const params = new URLSearchParams({
@@ -1290,9 +1437,6 @@
         if (!res.ok) throw new Error('Erro na resposta de semelhantes');
 
         const semelhantes = await res.json();
-
-        // Filtra transações que não sejam a própria que foi editada
-        // e que tenham vencimento igual ou posterior
         const dataVencOriginal = new Date(original.data_vencimento);
         listaParcelasParaAtualizar = (Array.isArray(semelhantes) ? semelhantes : []).filter(t => {
           const dataVencT = new Date(t.data_vencimento);
@@ -1309,6 +1453,7 @@
           valor: 'Valor',
           categoria_id: 'Categoria',
           tipo: 'Tipo',
+          status: 'Status',
           observacao: 'Observação'
         };
         const textoCampos = Object.keys(camposAlteradosDetectados).map(k => mapaNomes[k] || k).join(', ');
@@ -1348,7 +1493,6 @@
       carregarTransacoes();
     }
 
-    // NOVA FUNÇÃO: REPLICAÇÃO SEGURA VIA ROTA ÚNICA DE LOTE NO BACKEND
     async function confirmarReplicacaoParcelas() {
       const idsSelecionados = Array.from(document.querySelectorAll('.chk-parcela-futura:checked'))
                                    .map(c => parseInt(c.value));
@@ -1371,10 +1515,7 @@
         });
 
         const data = await res.json();
-
-        if (!res.ok) {
-          throw new Error(data.erro || 'Erro ao atualizar no servidor');
-        }
+        if (!res.ok) throw new Error(data.erro || 'Erro ao atualizar no servidor');
 
         alert('Parcelas atualizadas com sucesso!');
       } catch (err) {
@@ -1395,7 +1536,6 @@
 
       dados.forEach(t => {
         const dataExclusao = formatarDataBR(t.deleted_at);
-
         tbody.innerHTML += `
           <tr>
             <td>${t.descricao}</td>
