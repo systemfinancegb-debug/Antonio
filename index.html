@@ -140,7 +140,7 @@
 
     /* MODAIS */
     .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); justify-content: center; align-items: center; z-index: 1000; }
-    .modal-content { background: #fff; padding: 25px; border-radius: 8px; max-width: 650px; width: 90%; max-height: 85vh; overflow-y: auto; }
+    .modal-content { background: #fff; padding: 25px; border-radius: 8px; max-width: 900px; width: 95%; max-height: 85vh; overflow-y: auto; }
 
     /* ADAPTAÇÃO MOBILE */
     @media (max-width: 768px) {
@@ -417,92 +417,37 @@
 
   </div>
 
-  <!-- MODAL DE EDIÇÃO DE TRANSAÇÃO -->
-  <div id="modalEditar" class="modal-overlay">
-    <div class="modal-content">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-        <h2>✏️ Editar Transação</h2>
-        <button onclick="fecharModalEditar()" style="background:#95a5a6; padding: 5px 10px;">✖ Fechar</button>
-      </div>
-      <form id="formEditarTransacao">
-        <input type="hidden" id="edit_id">
-        <div>
-          <label>Descrição:</label>
-          <input type="text" id="edit_descricao" required>
-        </div>
-        <div>
-          <label>Categoria:</label>
-          <select id="edit_categoria_id">
-            <option value="">Sem categoria</option>
-          </select>
-        </div>
-        <div>
-          <label>Valor (R$):</label>
-          <input type="number" step="0.01" id="edit_valor" required>
-        </div>
-        <div>
-          <label>Tipo:</label>
-          <select id="edit_tipo">
-            <option value="DESPESA">Despesa</option>
-            <option value="RECEITA">Receita</option>
-          </select>
-        </div>
-        <div>
-          <label>Data de Lançamento:</label>
-          <input type="date" id="edit_data_lancamento" required>
-        </div>
-        <div>
-          <label>Competência de Vencimento (Mês/Ano):</label>
-          <input type="month" id="edit_competencia_vencimento" required>
-        </div>
-        <div>
-          <label>Observação (Opcional):</label>
-          <textarea id="edit_observacao" rows="2"></textarea>
-        </div>
-        <button type="submit" style="margin-top: 10px;">Salvar Alterações</button>
-      </form>
-    </div>
-  </div>
-
-  <!-- MODAL DE EDIÇÃO EM LOTE / RELACIONADAS -->
+  <!-- MODAL DE EDIÇÃO EM LOTE COM TABELA EDITÁVEL DIRETA -->
   <div id="modalEditarLote" class="modal-overlay">
-    <div class="modal-content">
+    <div class="modal-content" style="max-width: 950px;">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-        <h2>🔗 Transações Relacionadas / Parceladas</h2>
+        <h2>🔗 Gerenciar Transações Relacionadas / Parceladas</h2>
         <button onclick="fecharModalEditarLote()" style="background:#95a5a6; padding: 5px 10px;">✖ Fechar</button>
       </div>
-      <p>Encontramos transações semelhantes (parcelas). Selecione abaixo em quais deseja duplicar os campos alterados:</p>
-      
-      <!-- SELEÇÃO DE QUAIS CAMPOS DUPLICAR -->
-      <div style="background: #f8f9fa; padding: 12px; border-radius: 6px; margin-bottom: 15px; border: 1px solid #e9ecef;">
-        <label style="font-size: 13px; display: block; margin-bottom: 8px; color: #2c3e50;">Selecione os campos que deseja duplicar:</label>
-        <div style="display: flex; gap: 15px; flex-wrap: wrap;">
-          <label style="font-weight: normal; font-size: 13px; cursor: pointer;"><input type="checkbox" id="dup_descricao" checked> Descrição</label>
-          <label style="font-weight: normal; font-size: 13px; cursor: pointer;"><input type="checkbox" id="dup_valor" checked> Valor</label>
-          <label style="font-weight: normal; font-size: 13px; cursor: pointer;"><input type="checkbox" id="dup_categoria" checked> Categoria</label>
-          <label style="font-weight: normal; font-size: 13px; cursor: pointer;"><input type="checkbox" id="dup_tipo" checked> Tipo</label>
-          <label style="font-weight: normal; font-size: 13px; cursor: pointer;"><input type="checkbox" id="dup_observacao" checked> Observação</label>
-          <label style="font-weight: normal; font-size: 13px; cursor: pointer;"><input type="checkbox" id="dup_vencimento"> Mês/Ano Venc.</label>
-        </div>
+      <p style="font-size: 13px; color: #555; margin-bottom: 15px;">
+        Modifique diretamente os campos desejados nas linhas abaixo. As alterações <strong>só serão salvas</strong> no sistema quando você clicar no botão <strong>"Salvar Alterações"</strong> abaixo.
+      </p>
+
+      <div style="overflow-x: auto; max-height: 50vh; border: 1px solid #ddd; margin-bottom: 15px;">
+        <table style="min-width: 850px; margin-top: 0;">
+          <thead>
+            <tr>
+              <th style="width: 40px; text-align: center;">Salvar?</th>
+              <th>Descrição</th>
+              <th>Categoria</th>
+              <th>Tipo</th>
+              <th>Valor (R$)</th>
+              <th>Mês/Ano Venc.</th>
+              <th>Observação</th>
+            </tr>
+          </thead>
+          <tbody id="tabelaEditarLote"></tbody>
+        </table>
       </div>
 
-      <table style="margin-bottom: 15px;">
-        <thead>
-          <tr>
-            <th style="width: 40px; text-align: center;">
-              <input type="checkbox" id="chkMarcarTodasEditar" onchange="alternarTodasEdicao(this.checked)" checked>
-            </th>
-            <th>Descrição</th>
-            <th>Mês/Venc.</th>
-            <th>Valor</th>
-          </tr>
-        </thead>
-        <tbody id="tabelaEditarLote"></tbody>
-      </table>
-
       <div style="display: flex; justify-content: flex-end; gap: 10px;">
-        <button type="button" onclick="fecharModalEditarLote()" style="background:#7f8c8d;">Cancelar / Apenas Esta</button>
-        <button type="button" onclick="duplicarCamposParaRelacionadas()" style="background:#27ae60;">Duplicar Campos Alterados</button>
+        <button type="button" onclick="fecharModalEditarLote()" style="background:#7f8c8d;">Cancelar</button>
+        <button type="button" onclick="salvarEdicaoLoteDireta()" style="background:#27ae60;">Salvar Alterações</button>
       </div>
     </div>
   </div>
@@ -585,7 +530,6 @@
     let colunaOrdenacao = 'data_vencimento';
     let direcaoOrdenacao = 'asc';
     let totaisAtuais = { receitas: 0, despesas: 0, saldo: 0 };
-    let listaSemelhantesEdicao = [];
 
     // ESTADO DE VISIBILIDADE
     let visibilidadeCards = {
@@ -749,16 +693,7 @@
         const res = await fetch(`${API_BASE}/categorias`, { headers: getAuthHeaders() });
         const categorias = await res.json();
         categoriasBrutas = Array.isArray(categorias) ? categorias : [];
-
-        const optionsHTML = '<option value="">Sem categoria</option>' + 
-          categoriasBrutas.map(cat => `<option value="${cat.id}">${cat.nome}</option>`).join('');
-
-        const select = document.getElementById('categoria_id');
-        const editSelect = document.getElementById('edit_categoria_id');
-        
-        if (select) select.innerHTML = optionsHTML;
-        if (editSelect) editSelect.innerHTML = optionsHTML;
-      } catch (err) { console.error('Erro ao carregar select de categorias:', err); }
+      } catch (err) { console.error('Erro ao carregar categorias:', err); }
     }
 
     async function carregarCategoriasTabela() {
@@ -863,6 +798,7 @@
       const ano = document.getElementById('filtroAno').value;
 
       try {
+        await carregarCategoriasSelect();
         const res = await fetch(`${API_BASE}/transacoes?mes=${mes}&ano=${ano}`, { headers: getAuthHeaders() });
         if (res.status === 401) return fazerLogout();
         
@@ -885,6 +821,12 @@
           <input type="checkbox" value="${cat}" onchange="filtrarEProcessarTabela()" class="chk-filter-categoria"> ${cat}
         </label>
       `).join('');
+
+      const selectMain = document.getElementById('categoria_id');
+      if (selectMain) {
+        selectMain.innerHTML = '<option value="">Sem categoria</option>' + 
+          categoriasBrutas.map(cat => `<option value="${cat.id}">${cat.nome}</option>`).join('');
+      }
     }
 
     function getValoresSelecionados(className) {
@@ -1013,7 +955,7 @@
             <td>${obsTexto}</td>
             <td>${t.tipo}</td>
             <td>
-              <button class="btn-edit" onclick="abrirModalEditar(${t.id})">Editar</button>
+              <button class="btn-edit" onclick="abrirModalEditarLote(${t.id})">Editar</button>
               <button class="btn-delete" onclick="prepararExclusaoEmLote(${t.id})">Excluir</button>
             </td>
           </tr>
@@ -1172,87 +1114,18 @@
       }
     });
 
-    async function abrirModalEditar(id) {
+    // SUBSTITUÍDO: ABRE DIRETAMENTE A TABELA EDITÁVEL COM OS LANÇAMENTOS SEMELHANTES/FUTUROS
+    async function abrirModalEditarLote(id) {
       await carregarCategoriasSelect();
-      const t = transacoesBrutas.find(item => item.id === id);
-      if (!t) return alert('Transação não encontrada.');
-
-      document.getElementById('edit_id').value = t.id;
-      document.getElementById('edit_descricao').value = t.descricao;
-      document.getElementById('edit_categoria_id').value = t.categoria_id || '';
-      document.getElementById('edit_valor').value = parseFloat(t.valor);
-      document.getElementById('edit_tipo').value = t.tipo;
-      
-      const dataLancFormatada = t.data_lancamento ? t.data_lancamento.split('T')[0] : '';
-      document.getElementById('edit_data_lancamento').value = dataLancFormatada;
-      
-      const parteVenc = t.data_vencimento ? t.data_vencimento.split('T')[0] : '';
-      const [anoVenc, mesVenc] = parteVenc.split('-');
-      document.getElementById('edit_competencia_vencimento').value = `${anoVenc}-${mesVenc}`;
-
-      document.getElementById('edit_observacao').value = t.observacao || '';
-
-      document.getElementById('modalEditar').style.display = 'flex';
-    }
-
-    function fecharModalEditar() {
-      document.getElementById('modalEditar').style.display = 'none';
-    }
-
-    document.getElementById('formEditarTransacao').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const id = parseInt(document.getElementById('edit_id').value);
-      
-      const alvoOriginal = transacoesBrutas.find(t => t.id === id);
-      if (!alvoOriginal) return alert('Transação original não encontrada.');
-
-      const dataLancamentoNova = document.getElementById('edit_data_lancamento').value;
-      const compVencNova = document.getElementById('edit_competencia_vencimento').value;
-      const dataVencimentoFormatadaNova = `${compVencNova}-10`;
-
-      const novaDescricao = document.getElementById('edit_descricao').value;
-      const novaCategoriaId = document.getElementById('edit_categoria_id').value || null;
-      const novoValor = parseFloat(document.getElementById('edit_valor').value);
-      const novoTipo = document.getElementById('edit_tipo').value;
-      const novaObservacao = document.getElementById('edit_observacao').value;
-
-      const transacaoAtualizadaCompleta = {
-        descricao: novaDescricao,
-        categoria_id: novaCategoriaId ? parseInt(novaCategoriaId) : null,
-        valor: novoValor,
-        tipo: novoTipo,
-        data_lancamento: dataLancamentoNova,
-        data_vencimento: dataVencimentoFormatadaNova,
-        observacao: novaObservacao,
-        status: alvoOriginal.status || "PENDENTE"
-      };
-
-      const camposAlterados = {};
-      if (novaDescricao !== alvoOriginal.descricao) camposAlterados.descricao = novaDescricao;
-      if (novaCategoriaId !== (alvoOriginal.categoria_id ? String(alvoOriginal.categoria_id) : '')) camposAlterados.categoria_id = novaCategoriaId;
-      if (novoValor !== parseFloat(alvoOriginal.valor)) camposAlterados.valor = novoValor;
-      if (novoTipo !== alvoOriginal.tipo) camposAlterados.tipo = novoTipo;
-      if (novaObservacao !== (alvoOriginal.observacao || '')) camposAlterados.observacao = novaObservacao;
-      
-      const vencOriginalStr = alvoOriginal.data_vencimento ? alvoOriginal.data_vencimento.split('T')[0] : '';
-      if (vencOriginalStr) {
-        const [anoOrig, mesOrig] = vencOriginalStr.split('-').map(Number);
-        const [anoNovo, mesNovo] = compVencNova.split('-').map(Number);
-        const diferencaMeses = (anoNovo - anoOrig) * 12 + (mesNovo - mesOrig);
-        if (diferencaMeses !== 0) {
-          camposAlterados._diferencaMeses = diferencaMeses;
-        }
-      }
-
-      window.payloadEdicaoTemp = transacaoAtualizadaCompleta;
-      window.camposParciaisTemp = camposAlterados;
+      const alvo = transacoesBrutas.find(item => item.id === id);
+      if (!alvo) return alert('Transação não encontrada.');
 
       try {
         const params = new URLSearchParams({
-          descricao: alvoOriginal.descricao,
-          valor: alvoOriginal.valor,
-          tipo: alvoOriginal.tipo,
-          data_vencimento: alvoOriginal.data_vencimento
+          descricao: alvo.descricao,
+          valor: alvo.valor,
+          tipo: alvo.tipo,
+          data_vencimento: alvo.data_vencimento
         });
 
         const res = await fetch(`${API_BASE}/transacoes/semelhantes?${params.toString()}`, { 
@@ -1261,146 +1134,116 @@
         
         if (!res.ok) throw new Error('Erro ao buscar semelhantes');
         
-        listaSemelhantesEdicao = await res.json();
-
-        // Salva a transação atual editada primeiro
-        await executarEdicaoLote([id], transacaoAtualizadaCompleta, null);
-
-        // Se houver apenas 1 (ela mesma) ou nenhum campo alterado, encerra por aqui
-        if (!Array.isArray(listaSemelhantesEdicao) || listaSemelhantesEdicao.length <= 1 || Object.keys(camposAlterados).length === 0) {
-          fecharModalEditar();
-          carregarTransacoes();
-          return;
+        let semelhantes = await res.json();
+        if (!Array.isArray(semelhantes) || semelhantes.length === 0) {
+          semelhantes = [alvo];
         }
 
-        fecharModalEditar();
         const tbody = document.getElementById('tabelaEditarLote');
         tbody.innerHTML = '';
 
-        listaSemelhantesEdicao.forEach(t => {
-          if (t.id === id) return; // Não exibe a própria transação que acabou de ser editada na lista de lote
-          const mesAno = extrairMesAnoVencimento(t.data_vencimento);
-          const ehFutura = t.id > id;
-          const marcado = ehFutura ? 'checked' : '';
+        let optionsCatHTML = '<option value="">Sem categoria</option>';
+        categoriasBrutas.forEach(cat => {
+          optionsCatHTML += `<option value="${cat.id}">${cat.nome}</option>`;
+        });
+
+        semelhantes.forEach(t => {
+          const [anoV, mesV] = t.data_vencimento ? t.data_vencimento.split('T')[0].split('-') : ['', ''];
+          const mesAnoInput = (anoV && mesV) ? `${anoV}-${mesV}` : '';
+          const ehAlvoOuFutura = t.id >= id;
 
           tbody.innerHTML += `
-            <tr>
+            <tr data-id="${t.id}">
               <td style="text-align: center;">
-                <input type="checkbox" value="${t.id}" class="chk-editar-lote" ${marcado}>
+                <input type="checkbox" class="chk-editar-lote" ${ehAlvoOuFutura ? 'checked' : ''}>
               </td>
-              <td>${t.descricao}</td>
-              <td>${mesAno}</td>
-              <td>R$ ${parseFloat(t.valor).toFixed(2)}</td>
+              <td><input type="text" class="lote-desc" value="${t.descricao}" style="width: 140px;"></td>
+              <td>
+                <select class="lote-cat" style="width: 110px;">
+                  ${optionsCatHTML}
+                </select>
+              </td>
+              <td>
+                <select class="lote-tipo" style="width: 90px;">
+                  <option value="DESPESA" ${t.tipo === 'DESPESA' ? 'selected' : ''}>Despesa</option>
+                  <option value="RECEITA" ${t.tipo === 'RECEITA' ? 'selected' : ''}>Receita</option>
+                </select>
+              </td>
+              <td><input type="number" step="0.01" class="lote-valor" value="${parseFloat(t.valor).toFixed(2)}" style="width: 80px;"></td>
+              <td><input type="month" class="lote-venc" value="${mesAnoInput}" style="width: 110px;"></td>
+              <td><input type="text" class="lote-obs" value="${t.observacao || ''}" style="width: 120px;"></td>
             </tr>
           `;
+          
+          const ultimaLinha = tbody.lastElementChild;
+          ultimaLinha.querySelector('.lote-cat').value = t.categoria_id || '';
         });
 
         document.getElementById('modalEditarLote').style.display = 'flex';
 
       } catch (err) {
-        console.error('Erro ao verificar parcelas semelhantes:', err);
-        fecharModalEditar();
-        await executarEdicaoLote([id], transacaoAtualizadaCompleta, null);
-        carregarTransacoes();
+        console.error('Erro ao abrir edição em lote:', err);
+        alert('Erro ao carregar dados para edição.');
       }
-    });
-
-    function alternarTodasEdicao(status) {
-      document.querySelectorAll('.chk-editar-lote').forEach(c => c.checked = status);
     }
 
     function fecharModalEditarLote() {
       document.getElementById('modalEditarLote').style.display = 'none';
-      window.payloadEdicaoTemp = null;
-      window.camposParciaisTemp = null;
       carregarTransacoes();
     }
 
-    // BOTÃO DUPLICAR CAMPOS ALTERADOS PARA AS OUTRAS SELECIONADAS
-    async function duplicarCamposParaRelacionadas() {
-      const selecionadas = Array.from(document.querySelectorAll('.chk-editar-lote:checked')).map(c => parseInt(c.value));
-      
-      if (selecionadas.length === 0) {
-        return alert('Selecione ao menos uma transação relacionada para duplicar os campos.');
+    // SALVA APENAS QUANDO O USUÁRIO CLICA NO BOTÃO SALVAR DO MODAL
+    async function salvarEdicaoLoteDireta() {
+      const linhas = document.querySelectorAll('#tabelaEditarLote tr');
+      const promessas = [];
+
+      linhas.forEach(linha => {
+        const checkbox = linha.querySelector('.chk-editar-lote');
+        if (checkbox && checkbox.checked) {
+          const id = parseInt(linha.getAttribute('data-id'));
+          const itemOriginal = transacoesBrutas.find(t => t.id === id) || {};
+
+          const descricao = linha.querySelector('.lote-desc').value;
+          const categoria_id = linha.querySelector('.lote-cat').value ? parseInt(linha.querySelector('.lote-cat').value) : null;
+          const tipo = linha.querySelector('.lote-tipo').value;
+          const valor = parseFloat(linha.querySelector('.lote-valor').value) || 0;
+          const mesAnoVenc = linha.querySelector('.lote-venc').value;
+          const data_vencimento = mesAnoVenc ? `${mesAnoVenc}-10` : itemOriginal.data_vencimento;
+          const observacao = linha.querySelector('.lote-obs').value;
+          const data_lancamento = itemOriginal.data_lancamento ? itemOriginal.data_lancamento.split('T')[0] : '';
+
+          const payload = {
+            descricao,
+            categoria_id,
+            tipo,
+            valor,
+            data_vencimento,
+            observacao,
+            data_lancamento,
+            status: itemOriginal.status || "PENDENTE"
+          };
+
+          promessas.push(
+            fetch(`${API_BASE}/transacoes/${id}`, {
+              method: 'PUT',
+              headers: getAuthHeaders(),
+              body: JSON.stringify(payload)
+            })
+          );
+        }
+      });
+
+      if (promessas.length === 0) {
+        return alert('Marque ao menos uma transação para salvar as alterações.');
       }
 
-      // Filtra os campos alterados com base nos checkboxes marcados pelo usuário no modal
-      const camposParaDuplicar = {};
-      const parciais = window.camposParciaisTemp || {};
-
-      if (document.getElementById('dup_descricao').checked && parciais.descricao !== undefined) {
-        camposParaDuplicar.descricao = parciais.descricao;
-      }
-      if (document.getElementById('dup_valor').checked && parciais.valor !== undefined) {
-        camposParaDuplicar.valor = parciais.valor;
-      }
-      if (document.getElementById('dup_categoria').checked && parciais.categoria_id !== undefined) {
-        camposParaDuplicar.categoria_id = parciais.categoria_id;
-      }
-      if (document.getElementById('dup_tipo').checked && parciais.tipo !== undefined) {
-        camposParaDuplicar.tipo = parciais.tipo;
-      }
-      if (document.getElementById('dup_observacao').checked && parciais.observacao !== undefined) {
-        camposParaDuplicar.observacao = parciais.observacao;
-      }
-      if (document.getElementById('dup_vencimento').checked && parciais._diferencaMeses !== undefined) {
-        camposParaDuplicar._diferencaMeses = parciais._diferencaMeses;
-      }
-
-      if (Object.keys(camposParaDuplicar).length === 0) {
-        return alert('Nenhum campo alterado foi selecionado para duplicação.');
-      }
-
-      fecharModalEditarLote();
-      await executarEdicaoLote(selecionadas, null, camposParaDuplicar);
-    }
-
-    async function executarEdicaoLote(idsArray, payloadDireto, camposParciais) {
       try {
-        const promessas = idsArray.map(async (id) => {
-          let corpoEnvio = payloadDireto;
-
-          if (camposParciais) {
-            const itemAtual = transacoesBrutas.find(t => t.id === id);
-            if (!itemAtual) return;
-
-            let novaDataVencimento = itemAtual.data_vencimento;
-            if (camposParciais._diferencaMeses !== undefined && itemAtual.data_vencimento) {
-              const [anoOri, mesOri, diaOri] = itemAtual.data_vencimento.split('T')[0].split('-').map(Number);
-              let dataObj = new Date(anoOri, (mesOri - 1) + camposParciais._diferencaMeses, diaOri || 10);
-              novaDataVencimento = dataObj.toISOString().split('T')[0];
-            }
-
-            corpoEnvio = {
-              descricao: camposParciais.descricao !== undefined ? camposParciais.descricao : itemAtual.descricao,
-              categoria_id: camposParciais.categoria_id !== undefined ? (camposParciais.categoria_id ? parseInt(camposParciais.categoria_id) : null) : itemAtual.categoria_id,
-              valor: camposParciais.valor !== undefined ? camposParciais.valor : parseFloat(itemAtual.valor),
-              tipo: camposParciais.tipo !== undefined ? camposParciais.tipo : itemAtual.tipo,
-              observacao: camposParciais.observacao !== undefined ? camposParciais.observacao : (itemAtual.observacao || ''),
-              data_lancamento: itemAtual.data_lancamento ? itemAtual.data_lancamento.split('T')[0] : '',
-              data_vencimento: novaDataVencimento,
-              status: itemAtual.status || "PENDENTE"
-            };
-          }
-
-          const resposta = await fetch(`${API_BASE}/transacoes/${id}`, {
-            method: 'PUT',
-            headers: getAuthHeaders(),
-            body: JSON.stringify(corpoEnvio)
-          });
-
-          if (!resposta.ok) {
-            const erroData = await resposta.json().catch(() => ({}));
-            console.error(`Erro ao atualizar transação ${id}:`, erroData);
-          }
-        });
-
         await Promise.all(promessas);
-        alert('Transação(ões) atualizada(s) com sucesso!');
-        carregarTransacoes();
+        alert('Alterações salvas com sucesso!');
+        fecharModalEditarLote();
       } catch (err) {
-        console.error('Erro ao atualizar em lote:', err);
-        alert('Ocorreu um erro ao atualizar os registros.');
+        console.error('Erro ao salvar em lote:', err);
+        alert('Ocorreu um erro ao salvar os registros.');
       }
     }
 
