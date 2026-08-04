@@ -1324,44 +1324,51 @@
       // A principal recebe o payload completo editado na tela
       await executarEdicaoLote([idPrincipal], window.payloadEdicaoTemp, null);
 
-      // As demais selecionadas recebem APENAS os campos alterados (evitando clonagem)
+      // As demais selecionadas recebem seus dados originais combinados apenas com os campos alterados
       const demaisSelecionadas = selecionadas.filter(id => id !== idPrincipal);
       if (demaisSelecionadas.length > 0) {
         await executarEdicaoLote(demaisSelecionadas, null, window.camposParciaisTemp);
       }
     }
 
-    async function executarEdicaoLote(idsArray, payload, camposParciais) {
+    async function executarEdicaoLote(idsArray, payloadDireto, camposParciais) {
       try {
-        const promessas = idsArray.map(id => {
-          let corpoEnvio = payload;
+        const promessas = idsArray.map(async (id) => {
+          let corpoEnvio = payloadDireto;
+
           if (camposParciais) {
             const itemAtual = transacoesBrutas.find(t => t.id === id);
-            if (!itemAtual) return Promise.resolve();
+            if (!itemAtual) return;
 
-            corpoEnvio = {
-              descricao: camposParciais.descricao !== undefined ? camposParciais.descricao : itemAtual.descricao,
-              categoria_id: camposParciais.categoria_id !== undefined ? camposParciais.categoria_id : itemAtual.categoria_id,
-              valor: camposParciais.valor !== undefined ? camposParciais.valor : parseFloat(itemAtual.valor),
-              tipo: camposParciais.tipo !== undefined ? camposParciais.tipo : itemAtual.tipo,
-              observacao: camposParciais.observacao !== undefined ? camposParciais.observacao : itemAtual.observacao,
-              data_lancamento: itemAtual.data_lancamento ? itemAtual.data_lancamento.split('T')[0] : '',
-              data_vencimento: itemAtual.data_vencimento
-            };
-
-            // Desloca proporcionalmente mantendo o espaçamento original das parcelas seguintes se houve mudança de mês
+            let novaDataVencimento = itemAtual.data_vencimento;
             if (camposParciais._diferencaMeses !== undefined && itemAtual.data_vencimento) {
               const [anoOri, mesOri, diaOri] = itemAtual.data_vencimento.split('T')[0].split('-').map(Number);
               let dataObj = new Date(anoOri, (mesOri - 1) + camposParciais._diferencaMeses, diaOri || 10);
-              corpoEnvio.data_vencimento = dataObj.toISOString().split('T')[0];
+              novaDataVencimento = dataObj.toISOString().split('T')[0];
             }
+
+            corpoEnvio = {
+              descricao: camposParciais.descricao !== undefined ? camposParciais.descricao : itemAtual.descricao,
+              categoria_id: camposParciais.categoria_id !== undefined ? (camposParciais.categoria_id ? parseInt(camposParciais.categoria_id) : null) : itemAtual.categoria_id,
+              valor: camposParciais.valor !== undefined ? camposParciais.valor : parseFloat(itemAtual.valor),
+              tipo: camposParciais.tipo !== undefined ? camposParciais.tipo : itemAtual.tipo,
+              observacao: camposParciais.observacao !== undefined ? camposParciais.observacao : (itemAtual.observacao || ''),
+              data_lancamento: itemAtual.data_lancamento ? itemAtual.data_lancamento.split('T')[0] : '',
+              data_vencimento: novaDataVencimento,
+              status: itemAtual.status || "PENDENTE"
+            };
           }
 
-          return fetch(`${API_BASE}/transacoes/${id}`, {
+          const resposta = await fetch(`${API_BASE}/transacoes/${id}`, {
             method: 'PUT',
             headers: getAuthHeaders(),
             body: JSON.stringify(corpoEnvio)
           });
+
+          if (!resposta.ok) {
+            const erroData = await resposta.json().catch(() => ({}));
+            console.error(`Erro ao atualizar transação ${id}:`, erroData);
+          }
         });
 
         await Promise.all(promessas);
