@@ -1273,7 +1273,7 @@
       }
     });
 
-    // BUSCA PARCELAS FUTURAS DA TRANSAÇÃO EDITADA
+    // BUSCA PARCELAS FUTURAS DA TRANSAÇÃO EDITADA (AJUSTADO PARA BLINDAR COMPARAÇÃO DE DATAS)
     async function verificarParcelasFuturas(idEditado, original) {
       try {
         const params = new URLSearchParams({
@@ -1287,8 +1287,17 @@
           headers: getAuthHeaders()
         });
 
+        if (!res.ok) throw new Error('Erro na resposta de semelhantes');
+
         const semelhantes = await res.json();
-        listaParcelasParaAtualizar = (Array.isArray(semelhantes) ? semelhantes : []).filter(t => t.id > idEditado);
+
+        // Filtra transações que não sejam a própria que foi editada
+        // e que tenham vencimento igual ou posterior
+        const dataVencOriginal = new Date(original.data_vencimento);
+        listaParcelasParaAtualizar = (Array.isArray(semelhantes) ? semelhantes : []).filter(t => {
+          const dataVencT = new Date(t.data_vencimento);
+          return t.id !== idEditado && (t.id > idEditado || dataVencT >= dataVencOriginal);
+        });
 
         if (listaParcelasParaAtualizar.length === 0) {
           alert('Transação atualizada com sucesso!');
@@ -1339,7 +1348,7 @@
       carregarTransacoes();
     }
 
-    // APLICA EXCLUSIVAMENTE OS CAMPOS ALTERADOS NAS PARCELAS FUTURAS SELECIONADAS
+    // APLICA EXCLUSIVAMENTE OS CAMPOS ALTERADOS NAS PARCELAS FUTURAS SELECIONADAS (COM LIMPEZA DE DATAS E PAYLOAD)
     async function confirmarReplicacaoParcelas() {
       const idsSelecionados = Array.from(document.querySelectorAll('.chk-parcela-futura:checked'))
                                    .map(c => parseInt(c.value));
@@ -1349,24 +1358,37 @@
         return;
       }
 
-      const promessas = idsSelecionados.map(id => {
+      const promessas = idsSelecionados.map(async (id) => {
         const parcelaOriginal = listaParcelasParaAtualizar.find(p => p.id === id);
-        if (!parcelaOriginal) return Promise.resolve();
+        if (!parcelaOriginal) return;
 
-        // Mescla o que era original com o que alterou agora (sem sobrescrever datas)
+        // Limpa as datas para o formato estrito AAAA-MM-DD (removendo T00:00:00 se houver)
+        const dataVencLimpa = parcelaOriginal.data_vencimento ? String(parcelaOriginal.data_vencimento).split('T')[0] : '';
+        const dataLancLimpa = parcelaOriginal.data_lancamento ? String(parcelaOriginal.data_lancamento).split('T')[0] : '';
+
+        // Montamos APENAS os campos esperados pela API, substituindo SOMENTE o que foi alterado
         const payloadAtualizado = {
-          ...parcelaOriginal,
-          ...camposAlteradosDetectados,
-          data_vencimento: parcelaOriginal.data_vencimento,
-          data_lancamento: parcelaOriginal.data_lancamento,
+          descricao: camposAlteradosDetectados.descricao !== undefined ? camposAlteradosDetectados.descricao : parcelaOriginal.descricao,
+          categoria_id: camposAlteradosDetectados.categoria_id !== undefined ? camposAlteradosDetectados.categoria_id : (parcelaOriginal.categoria_id || null),
+          valor: camposAlteradosDetectados.valor !== undefined ? parseFloat(camposAlteradosDetectados.valor) : parseFloat(parcelaOriginal.valor),
+          tipo: camposAlteradosDetectados.tipo !== undefined ? camposAlteradosDetectados.tipo : parcelaOriginal.tipo,
+          observacao: camposAlteradosDetectados.observacao !== undefined ? camposAlteradosDetectados.observacao : (parcelaOriginal.observacao || ''),
+          data_lancamento: dataLancLimpa,
+          data_vencimento: dataVencLimpa,
           status: parcelaOriginal.status || "PENDENTE"
         };
 
-        return fetch(`${API_BASE}/transacoes/${id}`, {
+        const res = await fetch(`${API_BASE}/transacoes/${id}`, {
           method: 'PUT',
           headers: getAuthHeaders(),
           body: JSON.stringify(payloadAtualizado)
         });
+
+        if (!res.ok) {
+          const erroTexto = await res.text();
+          console.error(`Falha no PUT da transação ${id}:`, erroTexto);
+          throw new Error(`Erro no ID ${id}: ${res.status}`);
+        }
       });
 
       try {
@@ -1374,9 +1396,10 @@
         alert('Parcelas atualizadas com sucesso!');
       } catch (err) {
         console.error('Erro na replicação em lote:', err);
-        alert('Ocorreu um erro ao atualizar algumas parcelas.');
+        alert('Ocorreu um erro ao atualizar algumas parcelas. Verifique o Console (F12) para ver os detalhes da API.');
       } finally {
         fecharModalEditarLote();
+        carregarTransacoes();
       }
     }
 
