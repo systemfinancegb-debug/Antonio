@@ -1219,12 +1219,13 @@
       // Payload completo para a transação atual editada diretamente na tela
       const transacaoAtualizadaCompleta = {
         descricao: novaDescricao,
-        categoria_id: novaCategoriaId,
+        categoria_id: novaCategoriaId ? parseInt(novaCategoriaId) : null,
         valor: novoValor,
         tipo: novoTipo,
         data_lancamento: dataLancamentoNova,
         data_vencimento: dataVencimentoFormatadaNova,
-        observacao: novaObservacao
+        observacao: novaObservacao,
+        status: alvoOriginal.status || "PENDENTE"
       };
 
       // Identifica APENAS os campos modificados em relação à original para as futuras
