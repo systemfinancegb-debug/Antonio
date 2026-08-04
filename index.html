@@ -140,7 +140,7 @@
 
     /* MODAIS */
     .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); justify-content: center; align-items: center; z-index: 1000; }
-    .modal-content { background: #fff; padding: 25px; border-radius: 8px; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; }
+    .modal-content { background: #fff; padding: 25px; border-radius: 8px; max-width: 650px; width: 90%; max-height: 85vh; overflow-y: auto; }
 
     /* ADAPTAÇÃO MOBILE */
     @media (max-width: 768px) {
@@ -464,15 +464,28 @@
     </div>
   </div>
 
-  <!-- MODAL DE EDIÇÃO EM LOTE -->
+  <!-- MODAL DE EDIÇÃO EM LOTE / RELACIONADAS -->
   <div id="modalEditarLote" class="modal-overlay">
     <div class="modal-content">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-        <h2>✏️ Editar Transação(ões)</h2>
+        <h2>🔗 Transações Relacionadas / Parceladas</h2>
         <button onclick="fecharModalEditarLote()" style="background:#95a5a6; padding: 5px 10px;">✖ Fechar</button>
       </div>
-      <p>Encontramos os seguintes lançamentos semelhantes futuros. Marque aqueles em que deseja aplicar esta alteração:</p>
+      <p>Encontramos transações semelhantes (parcelas). Selecione abaixo em quais deseja duplicar os campos alterados:</p>
       
+      <!-- SELEÇÃO DE QUAIS CAMPOS DUPLICAR -->
+      <div style="background: #f8f9fa; padding: 12px; border-radius: 6px; margin-bottom: 15px; border: 1px solid #e9ecef;">
+        <label style="font-size: 13px; display: block; margin-bottom: 8px; color: #2c3e50;">Selecione os campos que deseja duplicar:</label>
+        <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+          <label style="font-weight: normal; font-size: 13px; cursor: pointer;"><input type="checkbox" id="dup_descricao" checked> Descrição</label>
+          <label style="font-weight: normal; font-size: 13px; cursor: pointer;"><input type="checkbox" id="dup_valor" checked> Valor</label>
+          <label style="font-weight: normal; font-size: 13px; cursor: pointer;"><input type="checkbox" id="dup_categoria" checked> Categoria</label>
+          <label style="font-weight: normal; font-size: 13px; cursor: pointer;"><input type="checkbox" id="dup_tipo" checked> Tipo</label>
+          <label style="font-weight: normal; font-size: 13px; cursor: pointer;"><input type="checkbox" id="dup_observacao" checked> Observação</label>
+          <label style="font-weight: normal; font-size: 13px; cursor: pointer;"><input type="checkbox" id="dup_vencimento"> Mês/Ano Venc.</label>
+        </div>
+      </div>
+
       <table style="margin-bottom: 15px;">
         <thead>
           <tr>
@@ -488,9 +501,8 @@
       </table>
 
       <div style="display: flex; justify-content: flex-end; gap: 10px;">
-        <button type="button" onclick="fecharModalEditarLote()" style="background:#7f8c8d;">Cancelar</button>
-        <button type="button" onclick="replicarAlteracaoLote()" style="background:#f39c12;">Replicar Alteração</button>
-        <button type="button" onclick="confirmarEdicaoLote()" style="background:#27ae60;">Salvar</button>
+        <button type="button" onclick="fecharModalEditarLote()" style="background:#7f8c8d;">Cancelar / Apenas Esta</button>
+        <button type="button" onclick="duplicarCamposParaRelacionadas()" style="background:#27ae60;">Duplicar Campos Alterados</button>
       </div>
     </div>
   </div>
@@ -1251,9 +1263,13 @@
         
         listaSemelhantesEdicao = await res.json();
 
+        // Salva a transação atual editada primeiro
+        await executarEdicaoLote([id], transacaoAtualizadaCompleta, null);
+
+        // Se houver apenas 1 (ela mesma) ou nenhum campo alterado, encerra por aqui
         if (!Array.isArray(listaSemelhantesEdicao) || listaSemelhantesEdicao.length <= 1 || Object.keys(camposAlterados).length === 0) {
           fecharModalEditar();
-          await executarEdicaoLote([id], transacaoAtualizadaCompleta, null);
+          carregarTransacoes();
           return;
         }
 
@@ -1262,6 +1278,7 @@
         tbody.innerHTML = '';
 
         listaSemelhantesEdicao.forEach(t => {
+          if (t.id === id) return; // Não exibe a própria transação que acabou de ser editada na lista de lote
           const mesAno = extrairMesAnoVencimento(t.data_vencimento);
           const ehFutura = t.id > id;
           const marcado = ehFutura ? 'checked' : '';
@@ -1284,6 +1301,7 @@
         console.error('Erro ao verificar parcelas semelhantes:', err);
         fecharModalEditar();
         await executarEdicaoLote([id], transacaoAtualizadaCompleta, null);
+        carregarTransacoes();
       }
     });
 
@@ -1295,48 +1313,46 @@
       document.getElementById('modalEditarLote').style.display = 'none';
       window.payloadEdicaoTemp = null;
       window.camposParciaisTemp = null;
+      carregarTransacoes();
     }
 
-    // BOTÃO REPLICAR ALTERAÇÃO (APLICA OS CAMPOS ALTERADOS OU O PAYLOAD EM TODOS OS SELECIONADOS)
-    async function replicarAlteracaoLote() {
+    // BOTÃO DUPLICAR CAMPOS ALTERADOS PARA AS OUTRAS SELECIONADAS
+    async function duplicarCamposParaRelacionadas() {
       const selecionadas = Array.from(document.querySelectorAll('.chk-editar-lote:checked')).map(c => parseInt(c.value));
       
       if (selecionadas.length === 0) {
-        return alert('Selecione ao menos uma transação para replicar a alteração.');
+        return alert('Selecione ao menos uma transação relacionada para duplicar os campos.');
       }
 
-      if (!confirm('Deseja replicar e salvar estas alterações imediatamente para todos os itens selecionados?')) return;
+      // Filtra os campos alterados com base nos checkboxes marcados pelo usuário no modal
+      const camposParaDuplicar = {};
+      const parciais = window.camposParciaisTemp || {};
+
+      if (document.getElementById('dup_descricao').checked && parciais.descricao !== undefined) {
+        camposParaDuplicar.descricao = parciais.descricao;
+      }
+      if (document.getElementById('dup_valor').checked && parciais.valor !== undefined) {
+        camposParaDuplicar.valor = parciais.valor;
+      }
+      if (document.getElementById('dup_categoria').checked && parciais.categoria_id !== undefined) {
+        camposParaDuplicar.categoria_id = parciais.categoria_id;
+      }
+      if (document.getElementById('dup_tipo').checked && parciais.tipo !== undefined) {
+        camposParaDuplicar.tipo = parciais.tipo;
+      }
+      if (document.getElementById('dup_observacao').checked && parciais.observacao !== undefined) {
+        camposParaDuplicar.observacao = parciais.observacao;
+      }
+      if (document.getElementById('dup_vencimento').checked && parciais._diferencaMeses !== undefined) {
+        camposParaDuplicar._diferencaMeses = parciais._diferencaMeses;
+      }
+
+      if (Object.keys(camposParaDuplicar).length === 0) {
+        return alert('Nenhum campo alterado foi selecionado para duplicação.');
+      }
 
       fecharModalEditarLote();
-      const idPrincipal = parseInt(document.getElementById('edit_id').value);
-      
-      // Salva a principal
-      await executarEdicaoLote([idPrincipal], window.payloadEdicaoTemp, null);
-
-      // Salva as demais selecionadas com os campos parciais
-      const demaisSelecionadas = selecionadas.filter(id => id !== idPrincipal);
-      if (demaisSelecionadas.length > 0) {
-        await executarEdicaoLote(demaisSelecionadas, null, window.camposParciaisTemp);
-      }
-    }
-
-    // BOTÃO SALVAR (APLICA ALTERAÇÃO APENAS NA ATUAL OU SEGUE O FLUXO PADRÃO SELECIONADO)
-    async function confirmarEdicaoLote() {
-      const selecionadas = Array.from(document.querySelectorAll('.chk-editar-lote:checked')).map(c => parseInt(c.value));
-      
-      if (selecionadas.length === 0) {
-        return alert('Selecione ao menos uma transação para aplicar a alteração.');
-      }
-
-      fecharModalEditarLote();
-      const idPrincipal = parseInt(document.getElementById('edit_id').value);
-      
-      await executarEdicaoLote([idPrincipal], window.payloadEdicaoTemp, null);
-
-      const demaisSelecionadas = selecionadas.filter(id => id !== idPrincipal);
-      if (demaisSelecionadas.length > 0) {
-        await executarEdicaoLote(demaisSelecionadas, null, window.camposParciaisTemp);
-      }
+      await executarEdicaoLote(selecionadas, null, camposParaDuplicar);
     }
 
     async function executarEdicaoLote(idsArray, payloadDireto, camposParciais) {
