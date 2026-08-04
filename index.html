@@ -140,7 +140,7 @@
 
     /* MODAIS */
     .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); justify-content: center; align-items: center; z-index: 1000; }
-    .modal-content { background: #fff; padding: 25px; border-radius: 8px; max-width: 900px; width: 95%; max-height: 85vh; overflow-y: auto; }
+    .modal-content { background: #fff; padding: 25px; border-radius: 8px; max-width: 950px; width: 95%; max-height: 85vh; overflow-y: auto; }
 
     /* ADAPTAÇÃO MOBILE */
     @media (max-width: 768px) {
@@ -530,6 +530,7 @@
     let colunaOrdenacao = 'data_vencimento';
     let direcaoOrdenacao = 'asc';
     let totaisAtuais = { receitas: 0, despesas: 0, saldo: 0 };
+    let listaCompletaModalLote = []; // Armazena os dados originais completos da API para o lote
 
     // ESTADO DE VISIBILIDADE
     let visibilidadeCards = {
@@ -1114,7 +1115,6 @@
       }
     });
 
-    // SUBSTITUÍDO: ABRE DIRETAMENTE A TABELA EDITÁVEL COM OS LANÇAMENTOS SEMELHANTES/FUTUROS
     async function abrirModalEditarLote(id) {
       await carregarCategoriasSelect();
       const alvo = transacoesBrutas.find(item => item.id === id);
@@ -1134,9 +1134,9 @@
         
         if (!res.ok) throw new Error('Erro ao buscar semelhantes');
         
-        let semelhantes = await res.json();
-        if (!Array.isArray(semelhantes) || semelhantes.length === 0) {
-          semelhantes = [alvo];
+        listaCompletaModalLote = await res.json();
+        if (!Array.isArray(listaCompletaModalLote) || listaCompletaModalLote.length === 0) {
+          listaCompletaModalLote = [alvo];
         }
 
         const tbody = document.getElementById('tabelaEditarLote');
@@ -1147,7 +1147,7 @@
           optionsCatHTML += `<option value="${cat.id}">${cat.nome}</option>`;
         });
 
-        semelhantes.forEach(t => {
+        listaCompletaModalLote.forEach(t => {
           const [anoV, mesV] = t.data_vencimento ? t.data_vencimento.split('T')[0].split('-') : ['', ''];
           const mesAnoInput = (anoV && mesV) ? `${anoV}-${mesV}` : '';
           const ehAlvoOuFutura = t.id >= id;
@@ -1192,7 +1192,7 @@
       carregarTransacoes();
     }
 
-    // SALVA APENAS QUANDO O USUÁRIO CLICA NO BOTÃO SALVAR DO MODAL
+    // SALVA CORRETAMENTE USANDO OS DADOS COMPLETOS DA API PARA CADA ITEM DO LOTE
     async function salvarEdicaoLoteDireta() {
       const linhas = document.querySelectorAll('#tabelaEditarLote tr');
       const promessas = [];
@@ -1201,7 +1201,10 @@
         const checkbox = linha.querySelector('.chk-editar-lote');
         if (checkbox && checkbox.checked) {
           const id = parseInt(linha.getAttribute('data-id'));
-          const itemOriginal = transacoesBrutas.find(t => t.id === id) || {};
+          
+          // Busca o objeto original completo vindo do backend/servidor
+          const itemOriginal = listaCompletaModalLote.find(t => t.id === id);
+          if (!itemOriginal) return;
 
           const descricao = linha.querySelector('.lote-desc').value;
           const categoria_id = linha.querySelector('.lote-cat').value ? parseInt(linha.querySelector('.lote-cat').value) : null;
@@ -1210,6 +1213,8 @@
           const mesAnoVenc = linha.querySelector('.lote-venc').value;
           const data_vencimento = mesAnoVenc ? `${mesAnoVenc}-10` : itemOriginal.data_vencimento;
           const observacao = linha.querySelector('.lote-obs').value;
+          
+          // Preserva estritamente a data_lancamento original que veio da API
           const data_lancamento = itemOriginal.data_lancamento ? itemOriginal.data_lancamento.split('T')[0] : '';
 
           const payload = {
