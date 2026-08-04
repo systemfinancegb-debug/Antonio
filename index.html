@@ -871,7 +871,8 @@
     document.getElementById('formCategoria').addEventListener('submit', async (e) => {
       e.preventDefault();
       const nome = document.getElementById('nomeCategoria').value;
-      const dia_vencimento = document.getElementById('diaVencimentoCategoria').value ? parseInt(document.getElementById('diaVencimentoCategoria').value) : null;
+      const diaVencInput = document.getElementById('diaVencimentoCategoria').value;
+      const dia_vencimento = diaVencInput ? parseInt(diaVencInput, 10) : null;
 
       const res = await fetch(`${API_BASE}/categorias`, {
         method: 'POST',
@@ -909,7 +910,8 @@
       e.preventDefault();
       const id = document.getElementById('edit_categoria_id_val').value;
       const nome = document.getElementById('edit_categoria_nome').value;
-      const dia_vencimento = document.getElementById('edit_categoria_dia').value ? parseInt(document.getElementById('edit_categoria_dia').value) : null;
+      const diaVencInput = document.getElementById('edit_categoria_dia').value;
+      const dia_vencimento = diaVencInput ? parseInt(diaVencInput, 10) : null;
 
       const res = await fetch(`${API_BASE}/categorias/${id}`, {
         method: 'PUT',
