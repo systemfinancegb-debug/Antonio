@@ -489,7 +489,8 @@
 
       <div style="display: flex; justify-content: flex-end; gap: 10px;">
         <button type="button" onclick="fecharModalEditarLote()" style="background:#7f8c8d;">Cancelar</button>
-        <button type="button" onclick="confirmarEdicaoLote()" style="background:#3498db;">Aplicar aos Selecionados</button>
+        <button type="button" onclick="replicarAlteracaoLote()" style="background:#f39c12;">Replicar Alteração</button>
+        <button type="button" onclick="confirmarEdicaoLote()" style="background:#27ae60;">Salvar</button>
       </div>
     </div>
   </div>
@@ -596,7 +597,6 @@
       }
     }
 
-    // EXTRAI MÊS/ANO DA STRING DIRETA DA DATA (EVITA TIMEZONE VOLTAR 1 DIA)
     function extrairMesAnoVencimento(dataStr) {
       if (!dataStr) return '-';
       const parteData = dataStr.split('T')[0];
@@ -611,7 +611,6 @@
       return `${dia}/${mes}/${ano}`;
     }
 
-    // GERENCIAMENTO DE ABAS
     function trocarAba(nomeAba) {
       document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
       document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
@@ -639,7 +638,6 @@
       document.getElementById('textoToggle').innerText = modoCadastro ? 'Já tem conta? Faça Login' : 'Não tem uma conta? Cadastre-se';
     }
 
-    // AUTH
     document.getElementById('formAuth').addEventListener('submit', async (e) => {
       e.preventDefault();
       const email = document.getElementById('authEmail').value;
@@ -702,7 +700,6 @@
       verificarAutenticacao();
     }
 
-    // CONTROLE INDIVIDUAL DE VISIBILIDADE DOS CARDS
     function alternarCardIndividual(tipo) {
       visibilidadeCards[tipo] = !visibilidadeCards[tipo];
       localStorage.setItem(`visivel_${tipo}`, visibilidadeCards[tipo]);
@@ -735,7 +732,6 @@
       }
     }
 
-    // LISTAR CATEGORIAS NO SELECT
     async function carregarCategoriasSelect() {
       try {
         const res = await fetch(`${API_BASE}/categorias`, { headers: getAuthHeaders() });
@@ -753,7 +749,6 @@
       } catch (err) { console.error('Erro ao carregar select de categorias:', err); }
     }
 
-    // LISTAR CATEGORIAS NA TABELA (ABA CATEGORIAS) COM BOTÕES DE AÇÃO
     async function carregarCategoriasTabela() {
       try {
         const res = await fetch(`${API_BASE}/categorias`, { headers: getAuthHeaders() });
@@ -778,7 +773,6 @@
       } catch (err) { console.error('Erro ao carregar tabela de categorias:', err); }
     }
 
-    // CADASTRAR CATEGORIA
     document.getElementById('formCategoria').addEventListener('submit', async (e) => {
       e.preventDefault();
       const nome = document.getElementById('nomeCategoria').value;
@@ -800,7 +794,6 @@
       }
     });
 
-    // FUNÇÕES DE EDIÇÃO E EXCLUSÃO DE CATEGORIAS
     function abrirModalEditarCategoria(id) {
       const cat = categoriasBrutas.find(item => item.id === id);
       if (!cat) return alert('Categoria não encontrada.');
@@ -853,7 +846,6 @@
       }
     }
 
-    // BUSCAR TRANSAÇÕES
     async function carregarTransacoes() {
       const mes = document.getElementById('filtroMes').value;
       const ano = document.getElementById('filtroAno').value;
@@ -1023,7 +1015,6 @@
       filtrarEProcessarTabela();
     }
 
-    // PREPARAR E BUSCAR TRANSAÇÕES SEMELHANTES FUTURAS NO BACKEND
     async function prepararExclusaoEmLote(id) {
       const alvo = transacoesBrutas.find(t => t.id === id);
       if (!alvo) return;
@@ -1115,7 +1106,6 @@
       }
     }
 
-    // CADASTRAR NOVA TRANSAÇÃO (COM TRAVA DE DUPLO CLIQUE)
     let enviandoTransacao = false;
 
     document.getElementById('formTransacao').addEventListener('submit', async (e) => {
@@ -1170,7 +1160,6 @@
       }
     });
 
-    // EDIÇÃO DE TRANSAÇÃO (MODAL)
     async function abrirModalEditar(id) {
       await carregarCategoriasSelect();
       const t = transacoesBrutas.find(item => item.id === id);
@@ -1198,7 +1187,6 @@
       document.getElementById('modalEditar').style.display = 'none';
     }
 
-    // SALVAR EDIÇÃO (ATUALIZAÇÃO PARCIAL INTELIGENTE PARA FUTURAS)
     document.getElementById('formEditarTransacao').addEventListener('submit', async (e) => {
       e.preventDefault();
       const id = parseInt(document.getElementById('edit_id').value);
@@ -1216,7 +1204,6 @@
       const novoTipo = document.getElementById('edit_tipo').value;
       const novaObservacao = document.getElementById('edit_observacao').value;
 
-      // Payload completo para a transação atual editada diretamente na tela
       const transacaoAtualizadaCompleta = {
         descricao: novaDescricao,
         categoria_id: novaCategoriaId ? parseInt(novaCategoriaId) : null,
@@ -1228,7 +1215,6 @@
         status: alvoOriginal.status || "PENDENTE"
       };
 
-      // Identifica APENAS os campos modificados em relação à original para as futuras
       const camposAlterados = {};
       if (novaDescricao !== alvoOriginal.descricao) camposAlterados.descricao = novaDescricao;
       if (novaCategoriaId !== (alvoOriginal.categoria_id ? String(alvoOriginal.categoria_id) : '')) camposAlterados.categoria_id = novaCategoriaId;
@@ -1236,7 +1222,6 @@
       if (novoTipo !== alvoOriginal.tipo) camposAlterados.tipo = novoTipo;
       if (novaObservacao !== (alvoOriginal.observacao || '')) camposAlterados.observacao = novaObservacao;
       
-      // Se a competência (mês/ano) mudou, calcula a diferença de meses para transpor proporcionalmente nas futuras
       const vencOriginalStr = alvoOriginal.data_vencimento ? alvoOriginal.data_vencimento.split('T')[0] : '';
       if (vencOriginalStr) {
         const [anoOrig, mesOrig] = vencOriginalStr.split('-').map(Number);
@@ -1266,7 +1251,6 @@
         
         listaSemelhantesEdicao = await res.json();
 
-        // Se houver apenas 1 (ela mesma) ou nenhum campo relevante alterado, salva direto apenas ela
         if (!Array.isArray(listaSemelhantesEdicao) || listaSemelhantesEdicao.length <= 1 || Object.keys(camposAlterados).length === 0) {
           fecharModalEditar();
           await executarEdicaoLote([id], transacaoAtualizadaCompleta, null);
@@ -1279,7 +1263,6 @@
 
         listaSemelhantesEdicao.forEach(t => {
           const mesAno = extrairMesAnoVencimento(t.data_vencimento);
-          // Marca por padrão apenas as parcelas FUTURAS (com ID maior que o atual)
           const ehFutura = t.id > id;
           const marcado = ehFutura ? 'checked' : '';
 
@@ -1310,8 +1293,34 @@
 
     function fecharModalEditarLote() {
       document.getElementById('modalEditarLote').style.display = 'none';
+      window.payloadEdicaoTemp = null;
+      window.camposParciaisTemp = null;
     }
 
+    // BOTÃO REPLICAR ALTERAÇÃO (APLICA OS CAMPOS ALTERADOS OU O PAYLOAD EM TODOS OS SELECIONADOS)
+    async function replicarAlteracaoLote() {
+      const selecionadas = Array.from(document.querySelectorAll('.chk-editar-lote:checked')).map(c => parseInt(c.value));
+      
+      if (selecionadas.length === 0) {
+        return alert('Selecione ao menos uma transação para replicar a alteração.');
+      }
+
+      if (!confirm('Deseja replicar e salvar estas alterações imediatamente para todos os itens selecionados?')) return;
+
+      fecharModalEditarLote();
+      const idPrincipal = parseInt(document.getElementById('edit_id').value);
+      
+      // Salva a principal
+      await executarEdicaoLote([idPrincipal], window.payloadEdicaoTemp, null);
+
+      // Salva as demais selecionadas com os campos parciais
+      const demaisSelecionadas = selecionadas.filter(id => id !== idPrincipal);
+      if (demaisSelecionadas.length > 0) {
+        await executarEdicaoLote(demaisSelecionadas, null, window.camposParciaisTemp);
+      }
+    }
+
+    // BOTÃO SALVAR (APLICA ALTERAÇÃO APENAS NA ATUAL OU SEGUE O FLUXO PADRÃO SELECIONADO)
     async function confirmarEdicaoLote() {
       const selecionadas = Array.from(document.querySelectorAll('.chk-editar-lote:checked')).map(c => parseInt(c.value));
       
@@ -1322,10 +1331,8 @@
       fecharModalEditarLote();
       const idPrincipal = parseInt(document.getElementById('edit_id').value);
       
-      // A principal recebe o payload completo editado na tela
       await executarEdicaoLote([idPrincipal], window.payloadEdicaoTemp, null);
 
-      // As demais selecionadas recebem seus dados originais combinados apenas com os campos alterados
       const demaisSelecionadas = selecionadas.filter(id => id !== idPrincipal);
       if (demaisSelecionadas.length > 0) {
         await executarEdicaoLote(demaisSelecionadas, null, window.camposParciaisTemp);
@@ -1381,7 +1388,6 @@
       }
     }
 
-    // LIXEIRA
     async function abrirLixeira() {
       const res = await fetch(`${API_BASE}/transacoes/lixeira`, { headers: getAuthHeaders() });
       const dados = await res.json();
