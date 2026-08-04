@@ -464,6 +464,44 @@
     </div>
   </div>
 
+  <!-- MODAL DE EDIÇÃO EM LOTE / PARCELAS FUTURAS -->
+  <div id="modalEditarLote" class="modal-overlay">
+    <div class="modal-content" style="max-width: 700px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <h2>🔗 Atualizar Parcelas Futuras</h2>
+        <button onclick="fecharModalEditarLote()" style="background:#95a5a6; padding: 5px 10px;">✖ Fechar</button>
+      </div>
+      
+      <p style="font-size: 14px; color: #555;">
+        Esta transação possui parcelas futuras. Deseja replicar <strong>apenas os campos alterados</strong> para elas?
+      </p>
+
+      <div style="background: #e8f4f8; border-left: 4px solid #3498db; padding: 10px 15px; margin-bottom: 15px; border-radius: 4px;">
+        <strong style="font-size: 13px; color: #2980b9;">Campos que serão replicados:</strong>
+        <div id="listaCamposAlteradosTexto" style="font-size: 13px; font-weight: bold; margin-top: 5px; color: #333;"></div>
+      </div>
+
+      <table style="margin-bottom: 15px;">
+        <thead>
+          <tr>
+            <th style="width: 40px; text-align: center;">
+              <input type="checkbox" id="chkMarcarTodasParcelas" onchange="alternarTodasParcelas(this.checked)" checked>
+            </th>
+            <th>Descrição</th>
+            <th>Vencimento</th>
+            <th>Valor Atual</th>
+          </tr>
+        </thead>
+        <tbody id="tabelaParcelasFuturas"></tbody>
+      </table>
+
+      <div style="display: flex; justify-content: flex-end; gap: 10px;">
+        <button type="button" onclick="fecharModalEditarLote()" style="background:#7f8c8d;">Não, apenas esta</button>
+        <button type="button" onclick="confirmarReplicacaoParcelas()" style="background:#27ae60;">Replicar para Selecionadas</button>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL DE EDIÇÃO DE CATEGORIA -->
   <div id="modalEditarCategoria" class="modal-overlay">
     <div class="modal-content">
@@ -542,6 +580,11 @@
     let colunaOrdenacao = 'data_vencimento';
     let direcaoOrdenacao = 'asc';
     let totaisAtuais = { receitas: 0, despesas: 0, saldo: 0 };
+
+    // CONTROLE DE EDICAO EM LOTE E REPLICACAO
+    let transacaoOriginalEdicao = null;
+    let camposAlteradosDetectados = {};
+    let listaParcelasParaAtualizar = [];
 
     // ESTADO DE VISIBILIDADE
     let visibilidadeCards = {
@@ -992,7 +1035,7 @@
       filtrarEProcessarTabela();
     }
 
-    // PREPARAR E BUSCAR TRANSAÇÕES SEMELHANTES FUTURAS NO BACKEND
+    // PREPARAR E BUSCAR TRANSAÇÕES SEMELHANTES FUTURAS NO BACKEND PARA EXCLUSÃO
     async function prepararExclusaoEmLote(id) {
       const alvo = transacoesBrutas.find(t => t.id === id);
       if (!alvo) return;
@@ -1139,11 +1182,14 @@
       }
     });
 
-    // EDIÇÃO DE TRANSAÇÃO (MODAL)
+    // EDIÇÃO DE TRANSAÇÃO (MODAL COM SUPORTE A REPLICAÇÃO SELETIVA EM PARCELAS)
     async function abrirModalEditar(id) {
       await carregarCategoriasSelect();
       const t = transacoesBrutas.find(item => item.id === id);
       if (!t) return alert('Transação não encontrada.');
+
+      // Guarda clone exato para comparação de mudanças no envio
+      transacaoOriginalEdicao = { ...t };
 
       document.getElementById('edit_id').value = t.id;
       document.getElementById('edit_descricao').value = t.descricao;
@@ -1167,10 +1213,10 @@
       document.getElementById('modalEditar').style.display = 'none';
     }
 
-    // SALVAR EDIÇÃO
+    // SALVAR EDIÇÃO E APURAR REPLICAÇÃO EM PARCELAS FUTURAS
     document.getElementById('formEditarTransacao').addEventListener('submit', async (e) => {
       e.preventDefault();
-      const id = document.getElementById('edit_id').value;
+      const id = parseInt(document.getElementById('edit_id').value);
       
       const dataLancamento = document.getElementById('edit_data_lancamento').value;
       const compVenc = document.getElementById('edit_competencia_vencimento').value;
@@ -1178,14 +1224,33 @@
       const dataVencimentoFormatada = `${compVenc}-10`;
 
       const transacaoAtualizada = {
-        descricao: document.getElementById('edit_descricao').value,
-        categoria_id: document.getElementById('edit_categoria_id').value || null,
+        descricao: document.getElementById('edit_descricao').value.trim(),
+        categoria_id: document.getElementById('edit_categoria_id').value ? parseInt(document.getElementById('edit_categoria_id').value) : null,
         valor: parseFloat(document.getElementById('edit_valor').value),
         tipo: document.getElementById('edit_tipo').value,
         data_lancamento: dataLancamento,
         data_vencimento: dataVencimentoFormatada,
-        observacao: document.getElementById('edit_observacao').value
+        observacao: document.getElementById('edit_observacao').value.trim()
       };
+
+      // DETECTAMOS APENAS OS CAMPOS REPLICÁVEIS QUE MUDARAM
+      camposAlteradosDetectados = {};
+      if (transacaoAtualizada.descricao !== transacaoOriginalEdicao.descricao) {
+        camposAlteradosDetectados.descricao = transacaoAtualizada.descricao;
+      }
+      if (transacaoAtualizada.valor !== parseFloat(transacaoOriginalEdicao.valor)) {
+        camposAlteradosDetectados.valor = transacaoAtualizada.valor;
+      }
+      const origCat = transacaoOriginalEdicao.categoria_id ? parseInt(transacaoOriginalEdicao.categoria_id) : null;
+      if (transacaoAtualizada.categoria_id !== origCat) {
+        camposAlteradosDetectados.categoria_id = transacaoAtualizada.categoria_id;
+      }
+      if (transacaoAtualizada.tipo !== transacaoOriginalEdicao.tipo) {
+        camposAlteradosDetectados.tipo = transacaoAtualizada.tipo;
+      }
+      if (transacaoAtualizada.observacao !== (transacaoOriginalEdicao.observacao || '').trim()) {
+        camposAlteradosDetectados.observacao = transacaoAtualizada.observacao;
+      }
 
       const res = await fetch(`${API_BASE}/transacoes/${id}`, {
         method: 'PUT',
@@ -1194,13 +1259,126 @@
       });
 
       if (res.ok) {
-        alert('Transação atualizada com sucesso!');
         fecharModalEditar();
-        carregarTransacoes();
+        const nomesCampos = Object.keys(camposAlteradosDetectados);
+        // Se mudou algum campo replicável, pergunta se quer aplicar em parcelas futuras
+        if (nomesCampos.length > 0) {
+          await verificarParcelasFuturas(id, transacaoOriginalEdicao);
+        } else {
+          alert('Transação atualizada com sucesso!');
+          carregarTransacoes();
+        }
       } else {
         alert('Erro ao atualizar transação.');
       }
     });
+
+    // BUSCA PARCELAS FUTURAS DA TRANSAÇÃO EDITADA
+    async function verificarParcelasFuturas(idEditado, original) {
+      try {
+        const params = new URLSearchParams({
+          descricao: original.descricao,
+          valor: original.valor,
+          tipo: original.tipo,
+          data_vencimento: original.data_vencimento
+        });
+
+        const res = await fetch(`${API_BASE}/transacoes/semelhantes?${params.toString()}`, {
+          headers: getAuthHeaders()
+        });
+
+        const semelhantes = await res.json();
+        listaParcelasParaAtualizar = (Array.isArray(semelhantes) ? semelhantes : []).filter(t => t.id > idEditado);
+
+        if (listaParcelasParaAtualizar.length === 0) {
+          alert('Transação atualizada com sucesso!');
+          return carregarTransacoes();
+        }
+
+        const mapaNomes = {
+          descricao: 'Descrição',
+          valor: 'Valor',
+          categoria_id: 'Categoria',
+          tipo: 'Tipo',
+          observacao: 'Observação'
+        };
+        const textoCampos = Object.keys(camposAlteradosDetectados).map(k => mapaNomes[k] || k).join(', ');
+        document.getElementById('listaCamposAlteradosTexto').innerText = textoCampos;
+
+        const tbody = document.getElementById('tabelaParcelasFuturas');
+        tbody.innerHTML = '';
+
+        listaParcelasParaAtualizar.forEach(t => {
+          const mesAno = extrairMesAnoVencimento(t.data_vencimento);
+          tbody.innerHTML += `
+            <tr>
+              <td style="text-align: center;">
+                <input type="checkbox" value="${t.id}" class="chk-parcela-futura" checked>
+              </td>
+              <td>${t.descricao}</td>
+              <td>${mesAno}</td>
+              <td>R$ ${parseFloat(t.valor).toFixed(2)}</td>
+            </tr>
+          `;
+        });
+
+        document.getElementById('chkMarcarTodasParcelas').checked = true;
+        document.getElementById('modalEditarLote').style.display = 'flex';
+      } catch (err) {
+        console.error('Erro ao verificar parcelas futuras:', err);
+        carregarTransacoes();
+      }
+    }
+
+    function alternarTodasParcelas(checked) {
+      document.querySelectorAll('.chk-parcela-futura').forEach(c => c.checked = checked);
+    }
+
+    function fecharModalEditarLote() {
+      document.getElementById('modalEditarLote').style.display = 'none';
+      carregarTransacoes();
+    }
+
+    // APLICA EXCLUSIVAMENTE OS CAMPOS ALTERADOS NAS PARCELAS FUTURAS SELECIONADAS
+    async function confirmarReplicacaoParcelas() {
+      const idsSelecionados = Array.from(document.querySelectorAll('.chk-parcela-futura:checked'))
+                                   .map(c => parseInt(c.value));
+
+      if (idsSelecionados.length === 0) {
+        fecharModalEditarLote();
+        return;
+      }
+
+      const promessas = idsSelecionados.map(id => {
+        const parcelaOriginal = listaParcelasParaAtualizar.find(p => p.id === id);
+        if (!parcelaOriginal) return Promise.resolve();
+
+        // Mescla o que era original com o que alterou agora (sem sobrescrever datas)
+        const payloadAtualizado = {
+          ...parcelaOriginal,
+          ...camposAlteradosDetectados,
+          data_vencimento: parcelaOriginal.data_vencimento,
+          data_lancamento: parcelaOriginal.data_lancamento,
+          status: parcelaOriginal.status || "PENDENTE"
+        };
+
+        return fetch(`${API_BASE}/transacoes/${id}`, {
+          method: 'PUT',
+          headers: getAuthHeaders(),
+          body: JSON.stringify(payloadAtualizado)
+        });
+      });
+
+      try {
+        await Promise.all(promessas);
+        alert('Parcelas atualizadas com sucesso!');
+      } catch (err) {
+        console.error('Erro na replicação em lote:', err);
+        alert('Ocorreu um erro ao atualizar algumas parcelas.');
+      } finally {
+        fecharModalEditarLote();
+      }
+    }
 
     // LIXEIRA
     async function abrirLixeira() {
