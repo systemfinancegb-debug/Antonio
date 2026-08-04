@@ -71,7 +71,7 @@
     .btn-lixeira { background-color: #7f8c8d; }
     .btn-sair { background-color: #c0392b; padding: 5px 10px; margin-left: 10px; }
 
-    /* TABELA E CABEÇALHO CORRIGIDOS (SEM POSICIONAMENTO ABSOLUTO/FIXED) */
+    /* TABELA E CABEÇALHO CORRIGIDOS */
     table { width: 100%; border-collapse: collapse; margin-top: 10px; min-width: 700px; }
     th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
     th { background-color: #2c3e50; color: white; vertical-align: top; user-select: none; position: static; }
@@ -142,7 +142,6 @@
     .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); justify-content: center; align-items: center; z-index: 1000; }
     .modal-content { background: #fff; padding: 25px; border-radius: 8px; max-width: 950px; width: 95%; max-height: 85vh; overflow-y: auto; }
 
-    /* ADAPTAÇÃO MOBILE */
     @media (max-width: 768px) {
       body { padding: 10px; }
       .header-actions { flex-direction: column; align-items: flex-start; gap: 10px; }
@@ -417,11 +416,11 @@
 
   </div>
 
-  <!-- MODAL DE EDIÇÃO EM LOTE COM TABELA EDITÁVEL DIRETA -->
+  <!-- MODAL DE EDIÇÃO ÚNICA OU LOTE COM TABELA EDITÁVEL DIRETA -->
   <div id="modalEditarLote" class="modal-overlay">
     <div class="modal-content" style="max-width: 950px;">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-        <h2>🔗 Gerenciar Transações Relacionadas / Parceladas</h2>
+        <h2 id="tituloModalEditar">✏️ Editar Transação</h2>
         <button onclick="fecharModalEditarLote()" style="background:#95a5a6; padding: 5px 10px;">✖ Fechar</button>
       </div>
       <p style="font-size: 13px; color: #555; margin-bottom: 15px;">
@@ -530,7 +529,7 @@
     let colunaOrdenacao = 'data_vencimento';
     let direcaoOrdenacao = 'asc';
     let totaisAtuais = { receitas: 0, despesas: 0, saldo: 0 };
-    let listaCompletaModalLote = []; // Armazena os dados originais completos da API para o lote
+    let listaCompletaModalLote = [];
 
     // ESTADO DE VISIBILIDADE
     let visibilidadeCards = {
@@ -1115,6 +1114,7 @@
       }
     });
 
+    // ABRE O MODAL EDITÁVEL TANTO PARA TRANSAÇÕES ÚNICAS QUANTO PARA TRANSAÇÕES EM PARCELAS/LOTE
     async function abrirModalEditarLote(id) {
       await carregarCategoriasSelect();
       const alvo = transacoesBrutas.find(item => item.id === id);
@@ -1132,11 +1132,22 @@
           headers: getAuthHeaders() 
         });
         
-        if (!res.ok) throw new Error('Erro ao buscar semelhantes');
-        
-        listaCompletaModalLote = await res.json();
+        if (res.ok) {
+          listaCompletaModalLote = await res.json();
+        } else {
+          listaCompletaModalLote = [alvo];
+        }
+
         if (!Array.isArray(listaCompletaModalLote) || listaCompletaModalLote.length === 0) {
           listaCompletaModalLote = [alvo];
+        }
+
+        // Atualiza o título dinamicamente se for única ou lote
+        const tituloModal = document.getElementById('tituloModalEditar');
+        if (tituloModal) {
+          tituloModal.innerText = listaCompletaModalLote.length > 1 
+            ? '🔗 Gerenciar Transações Relacionadas / Parceladas' 
+            : '✏️ Editar Transação';
         }
 
         const tbody = document.getElementById('tabelaEditarLote');
@@ -1182,7 +1193,7 @@
         document.getElementById('modalEditarLote').style.display = 'flex';
 
       } catch (err) {
-        console.error('Erro ao abrir edição em lote:', err);
+        console.error('Erro ao abrir edição:', err);
         alert('Erro ao carregar dados para edição.');
       }
     }
@@ -1192,7 +1203,7 @@
       carregarTransacoes();
     }
 
-    // SALVA CORRETAMENTE USANDO OS DADOS COMPLETOS DA API PARA CADA ITEM DO LOTE
+    // SALVA TRANSAÇÕES SELECIONADAS (SEJA ÚNICA OU EM LOTE)
     async function salvarEdicaoLoteDireta() {
       const linhas = document.querySelectorAll('#tabelaEditarLote tr');
       const promessas = [];
@@ -1202,9 +1213,8 @@
         if (checkbox && checkbox.checked) {
           const id = parseInt(linha.getAttribute('data-id'));
           
-          // Busca o objeto original completo vindo do backend/servidor
-          const itemOriginal = listaCompletaModalLote.find(t => t.id === id);
-          if (!itemOriginal) return;
+          // Busca os dados da lista original em memória para a modal
+          const itemOriginal = listaCompletaModalLote.find(t => t.id === id) || {};
 
           const descricao = linha.querySelector('.lote-desc').value;
           const categoria_id = linha.querySelector('.lote-cat').value ? parseInt(linha.querySelector('.lote-cat').value) : null;
@@ -1214,7 +1224,6 @@
           const data_vencimento = mesAnoVenc ? `${mesAnoVenc}-10` : itemOriginal.data_vencimento;
           const observacao = linha.querySelector('.lote-obs').value;
           
-          // Preserva estritamente a data_lancamento original que veio da API
           const data_lancamento = itemOriginal.data_lancamento ? itemOriginal.data_lancamento.split('T')[0] : '';
 
           const payload = {
@@ -1247,7 +1256,7 @@
         alert('Alterações salvas com sucesso!');
         fecharModalEditarLote();
       } catch (err) {
-        console.error('Erro ao salvar em lote:', err);
+        console.error('Erro ao salvar:', err);
         alert('Ocorreu um erro ao salvar os registros.');
       }
     }
