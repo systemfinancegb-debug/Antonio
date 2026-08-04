@@ -1348,7 +1348,7 @@
       carregarTransacoes();
     }
 
-    // APLICA EXCLUSIVAMENTE OS CAMPOS ALTERADOS NAS PARCELAS FUTURAS SELECIONADAS (BLINDADO)
+    // NOVA FUNÇÃO: REPLICAÇÃO SEGURA VIA ROTA ÚNICA DE LOTE NO BACKEND
     async function confirmarReplicacaoParcelas() {
       const idsSelecionados = Array.from(document.querySelectorAll('.chk-parcela-futura:checked'))
                                    .map(c => parseInt(c.value));
@@ -1358,48 +1358,28 @@
         return;
       }
 
-      // Captura uma cópia segura local dos campos que mudaram
       const alteracoesParaAplicar = { ...camposAlteradosDetectados };
 
-      const promessas = idsSelecionados.map(async (id) => {
-        const parcelaOriginal = listaParcelasParaAtualizar.find(p => p.id === id);
-        if (!parcelaOriginal) return;
-
-        // Limpa as datas para o formato estrito AAAA-MM-DD
-        const dataVencLimpa = parcelaOriginal.data_vencimento ? String(parcelaOriginal.data_vencimento).split('T')[0] : '';
-        const dataLancLimpa = parcelaOriginal.data_lancamento ? String(parcelaOriginal.data_lancamento).split('T')[0] : '';
-
-        // Constrói o payload completo mesclando rigorosamente os dados originais com o que mudou
-        const payloadCompleto = {
-          descricao: alteracoesParaAplicar.descricao !== undefined ? alteracoesParaAplicar.descricao : parcelaOriginal.descricao,
-          categoria_id: alteracoesParaAplicar.categoria_id !== undefined ? alteracoesParaAplicar.categoria_id : (parcelaOriginal.categoria_id || null),
-          valor: alteracoesParaAplicar.valor !== undefined ? parseFloat(alteracoesParaAplicar.valor) : parseFloat(parcelaOriginal.valor),
-          tipo: alteracoesParaAplicar.tipo !== undefined ? alteracoesParaAplicar.tipo : parcelaOriginal.tipo,
-          observacao: alteracoesParaAplicar.observacao !== undefined ? alteracoesParaAplicar.observacao : (parcelaOriginal.observacao || ''),
-          data_lancamento: dataLancLimpa,
-          data_vencimento: dataVencLimpa,
-          status: parcelaOriginal.status || "PENDENTE"
-        };
-
-        const res = await fetch(`${API_BASE}/transacoes/${id}`, {
+      try {
+        const res = await fetch(`${API_BASE}/transacoes/replicar-lote`, {
           method: 'PUT',
           headers: getAuthHeaders(),
-          body: JSON.stringify(payloadCompleto)
+          body: JSON.stringify({
+            ids_parcelas: idsSelecionados,
+            alteracoes: alteracoesParaAplicar
+          })
         });
 
-        if (!res.ok) {
-          const erroTexto = await res.text();
-          console.error(`Falha no PUT da transação ${id}:`, erroTexto);
-          throw new Error(`Erro no ID ${id}: ${res.status}`);
-        }
-      });
+        const data = await res.json();
 
-      try {
-        await Promise.all(promessas);
+        if (!res.ok) {
+          throw new Error(data.erro || 'Erro ao atualizar no servidor');
+        }
+
         alert('Parcelas atualizadas com sucesso!');
       } catch (err) {
         console.error('Erro na replicação em lote:', err);
-        alert('Ocorreu um erro ao atualizar algumas parcelas. Verifique o Console (F12).');
+        alert('Ocorreu um erro ao atualizar as parcelas: ' + err.message);
       } finally {
         fecharModalEditarLote();
         carregarTransacoes();
