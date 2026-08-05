@@ -755,14 +755,17 @@
 
     // ALTERNAR STATUS DA TRANSAÇÃO DIRETAMENTE PELA ABA DE VENCIMENTOS
     async function alternarStatusTransacaoVencimento(idTransacao, novoStatus) {
+      const mes = document.getElementById('filtroMesStatus').value;
+      const ano = document.getElementById('filtroAnoStatus').value;
+
       try {
-        const resUnica = await fetch(`${API_BASE}/transacoes`, { headers: getAuthHeaders() });
+        const resUnica = await fetch(`${API_BASE}/transacoes?mes=${mes}&ano=${ano}`, { headers: getAuthHeaders() });
         const resp = await resUnica.json();
         const lista = resp.transacoes || resp;
         const txOriginal = lista.find(t => t.id === idTransacao);
 
         if (!txOriginal) {
-          return alert('Transação não encontrada.');
+          return alert('Transação não encontrada para este mês.');
         }
 
         const payloadAtualizacao = {
@@ -785,7 +788,8 @@
         if (res.ok) {
           carregarStatusVencimentosCategorias();
         } else {
-          alert('Erro ao atualizar o status da transação.');
+          const erroData = await res.json();
+          alert(erroData.erro || 'Erro ao atualizar o status da transação.');
         }
       } catch (err) {
         console.error('Erro ao alternar status:', err);
