@@ -1086,7 +1086,7 @@
       });
     }
 
-    function filtrarEProcessarTabela() {
+    async function filtrarEProcessarTabela() {
       const filterDesc = (document.getElementById('col-filter-descricao').value || '').toLowerCase();
       const filterValor = (document.getElementById('col-filter-valor').value || '').toLowerCase();
       const filterDataLanc = (document.getElementById('col-filter-data_lancamento').value || '').toLowerCase();
@@ -1098,6 +1098,30 @@
 
       const temFiltroAtivo = filterDesc || filterValor || filterDataLanc || filterDataVenc || filterObs || selectedTipos.length > 0 || selectedCats.length > 0;
       document.getElementById('barraAlertaFiltros').style.display = temFiltroAtivo ? 'flex' : 'none';
+
+      // BUSCA O STATUS DAS CATEGORIAS NO MÊS SELECIONADO PARA PINTAR TODAS AS TRANSAÇÕES DELAS CORRETAMENTE
+      const mes = document.getElementById('filtroMes').value;
+      const ano = document.getElementById('filtroAno').value;
+      let categoriasOkIds = [];
+      try {
+        const resCat = await fetch(`${API_BASE}/categorias/vencimentos`, { headers: getAuthHeaders() });
+        const categorias = await resCat.json();
+        const resTx = await fetch(`${API_BASE}/transacoes?mes=${mes}&ano=${ano}`, { headers: getAuthHeaders() });
+        const respTx = await resTx.json();
+        const transacoesMes = respTx.transacoes || respTx;
+
+        if (Array.isArray(categorias)) {
+          categorias.forEach(cat => {
+            const txVinculada = transacoesMes.find(t => t.categoria_id === cat.id);
+            const statusAtual = txVinculada ? (txVinculada.status || 'PENDENTE') : 'PENDENTE';
+            if (statusAtual === 'PAGO' || statusAtual === 'RECEBIDO') {
+              categoriasOkIds.push(cat.id);
+            }
+          });
+        }
+      } catch (e) {
+        console.error('Erro ao verificar status das categorias para pintura:', e);
+      }
 
       let filtradas = transacoesBrutas.filter(t => {
         const desc = (t.descricao || '').toLowerCase();
@@ -1172,10 +1196,9 @@
 
         const categoriaNome = t.categoria_nome || '-';
 
-        // IDENTIFICA O STATUS DA TRANSAÇÃO PARA COLORIR A CATEGORIA
-        const statusAtual = (t.status || 'PENDENTE').toUpperCase();
-        const isOk = statusAtual === 'PAGO' || statusAtual === 'RECEBIDO';
-        const estiloCategoria = isOk 
+        // SE A CATEGORIA ESTIVER MARCADA COMO OK NA ABA DE VENCIMENTOS DO MÊS, TODAS AS TRANSAÇÕES DELA FICAM VERDES. CASO CONTRÁRIO, LARANJA.
+        const isCatOk = categoriasOkIds.includes(t.categoria_id);
+        const estiloCategoria = isCatOk 
           ? 'color: #27ae60; font-weight: bold;' 
           : 'color: #e67e22; font-weight: bold;';
 
