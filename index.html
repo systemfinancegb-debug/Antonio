@@ -718,23 +718,78 @@
           const txVinculada = transacoes.find(t => t.categoria_id === cat.id);
           const statusAtual = txVinculada ? (txVinculada.status || 'PENDENTE') : 'PENDENTE';
           
-          const badgeStatus = statusAtual === 'PAGO' || statusAtual === 'RECEBIDO' 
+          const isOk = statusAtual === 'PAGO' || statusAtual === 'RECEBIDO';
+          const badgeStatus = isOk 
             ? '<span style="color: #27ae60; font-weight: bold;">🟢 OK</span>' 
             : '<span style="color: #e67e22; font-weight: bold;">🟠 Pendente</span>';
+
+          let acaoHTML = '';
+          if (txVinculada) {
+            const novoStatusDestino = isOk ? 'PENDENTE' : 'PAGO';
+            const textoBotao = isOk ? 'Marcar Pendente' : 'Marcar OK';
+            const corBotao = isOk ? '#e67e22' : '#27ae60';
+            
+            acaoHTML = `
+              <button style="background-color: ${corBotao}; padding: 6px 12px; font-size: 12px;" 
+                onclick="alternarStatusTransacaoVencimento(${txVinculada.id}, '${novoStatusDestino}')">
+                ${textoBotao}
+              </button>
+            `;
+          } else {
+            acaoHTML = `<span style="font-size: 12px; color: #7f8c8d;">Sem transação no mês</span>`;
+          }
 
           tbody.innerHTML += `
             <tr>
               <td><strong>Dia ${cat.dia_vencimento}</strong></td>
               <td>${cat.nome}</td>
               <td>${badgeStatus}</td>
-              <td>
-                <button class="btn-edit" onclick="abrirModalEditarCategoria(${cat.id})">Editar Dia</button>
-              </td>
+              <td>${acaoHTML}</td>
             </tr>
           `;
         });
       } catch (err) {
         console.error('Erro ao carregar status de vencimentos:', err);
+      }
+    }
+
+    // ALTERNAR STATUS DA TRANSAÇÃO DIRETAMENTE PELA ABA DE VENCIMENTOS
+    async function alternarStatusTransacaoVencimento(idTransacao, novoStatus) {
+      try {
+        const resUnica = await fetch(`${API_BASE}/transacoes`, { headers: getAuthHeaders() });
+        const resp = await resUnica.json();
+        const lista = resp.transacoes || resp;
+        const txOriginal = lista.find(t => t.id === idTransacao);
+
+        if (!txOriginal) {
+          return alert('Transação não encontrada.');
+        }
+
+        const payloadAtualizacao = {
+          descricao: txOriginal.descricao,
+          categoria_id: txOriginal.categoria_id,
+          valor: txOriginal.valor,
+          tipo: txOriginal.tipo,
+          data_lancamento: txOriginal.data_lancamento ? txOriginal.data_lancamento.split('T')[0] : '',
+          data_vencimento: txOriginal.data_vencimento,
+          observacao: txOriginal.observacao || '',
+          status: novoStatus
+        };
+
+        const res = await fetch(`${API_BASE}/transacoes/${idTransacao}`, {
+          method: 'PUT',
+          headers: getAuthHeaders(),
+          body: JSON.stringify(payloadAtualizacao)
+        });
+
+        if (res.ok) {
+          carregarStatusVencimentosCategorias();
+        } else {
+          alert('Erro ao atualizar o status da transação.');
+        }
+      } catch (err) {
+        console.error('Erro ao alternar status:', err);
+        alert('Erro de conexão com o servidor.');
       }
     }
 
