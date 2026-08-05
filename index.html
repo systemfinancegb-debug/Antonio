@@ -1172,10 +1172,17 @@
 
         const categoriaNome = t.categoria_nome || '-';
 
+        // IDENTIFICA O STATUS DA TRANSAÇÃO PARA COLORIR A CATEGORIA
+        const statusAtual = (t.status || 'PENDENTE').toUpperCase();
+        const isOk = statusAtual === 'PAGO' || statusAtual === 'RECEBIDO';
+        const estiloCategoria = isOk 
+          ? 'color: #27ae60; font-weight: bold;' 
+          : 'color: #e67e22; font-weight: bold;';
+
         tbody.innerHTML += `
           <tr>
             <td>${t.descricao}</td>
-            <td>${categoriaNome}</td>
+            <td style="${estiloCategoria}">${categoriaNome}</td>
             <td class="${t.tipo}">R$ ${parseFloat(t.valor).toFixed(2)}</td>
             <td>${dataLanc}</td>
             <td>${mesAnoVencimento}</td>
