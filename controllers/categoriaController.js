@@ -1,10 +1,9 @@
 const db = require('../db');
 
-// Listar todas as categorias do usuário logado
+// Listar todas as categorias
 exports.listarCategorias = async (req, res) => {
   try {
-    const queryText = 'SELECT * FROM categorias WHERE usuario_id = $1 ORDER BY nome ASC';
-    const resultado = await db.query(queryText, [req.usuarioId]);
+    const resultado = await db.query('SELECT * FROM categorias ORDER BY nome ASC');
     res.status(200).json(resultado.rows);
   } catch (error) {
     console.error('Erro ao listar categorias:', error);
@@ -12,25 +11,20 @@ exports.listarCategorias = async (req, res) => {
   }
 };
 
-// Criar uma nova categoria vinculada ao usuário logado
+// Criar uma nova categoria
 exports.criarCategoria = async (req, res) => {
-  const { nome, dia_vencimento } = req.body;
+  const { nome } = req.body;
 
   if (!nome || !nome.trim()) {
     return res.status(400).json({ erro: 'O nome da categoria é obrigatório.' });
   }
 
   try {
-    const queryText = 'INSERT INTO categorias (nome, dia_vencimento, usuario_id) VALUES ($1, $2, $3) RETURNING *';
-    
-    // Blindagem aprimorada para o dia de vencimento (apenas entre 1 e 31)
-    const diaNum = parseInt(dia_vencimento, 10);
-    const valorDia = (!isNaN(diaNum) && diaNum >= 1 && diaNum <= 31) ? diaNum : null;
-
-    const resultado = await db.query(queryText, [nome.trim(), valorDia, req.usuarioId]);
+    const queryText = 'INSERT INTO categorias (nome) VALUES ($1) RETURNING *';
+    const resultado = await db.query(queryText, [nome.trim()]);
     res.status(201).json(resultado.rows[0]);
   } catch (error) {
-    if (error.code === '23505') { 
+    if (error.code === '23505') { // Código do Postgres para UNIQUE violation
       return res.status(400).json({ erro: 'Categoria já cadastrada.' });
     }
     console.error('Erro ao criar categoria:', error);
@@ -38,26 +32,21 @@ exports.criarCategoria = async (req, res) => {
   }
 };
 
-// Atualizar uma categoria existente do usuário logado
+// Atualizar uma categoria existente
 exports.atualizarCategoria = async (req, res) => {
   const { id } = req.params;
-  const { nome, dia_vencimento } = req.body;
+  const { nome } = req.body;
 
   if (!nome || !nome.trim()) {
     return res.status(400).json({ erro: 'O nome da categoria é obrigatório.' });
   }
 
   try {
-    const queryText = 'UPDATE categorias SET nome = $1, dia_vencimento = $2 WHERE id = $3 AND usuario_id = $4 RETURNING *';
-    
-    // Blindagem aprimorada para o dia de vencimento (apenas entre 1 e 31)
-    const diaNum = parseInt(dia_vencimento, 10);
-    const valorDia = (!isNaN(diaNum) && diaNum >= 1 && diaNum <= 31) ? diaNum : null;
-
-    const resultado = await db.query(queryText, [nome.trim(), valorDia, id, req.usuarioId]);
+    const queryText = 'UPDATE categorias SET nome = $1 WHERE id = $2 RETURNING *';
+    const resultado = await db.query(queryText, [nome.trim(), id]);
 
     if (resultado.rows.length === 0) {
-      return res.status(404).json({ erro: 'Categoria não encontrada ou sem permissão.' });
+      return res.status(404).json({ erro: 'Categoria não encontrada.' });
     }
 
     res.status(200).json(resultado.rows[0]);
@@ -70,16 +59,16 @@ exports.atualizarCategoria = async (req, res) => {
   }
 };
 
-// Excluir uma categoria do usuário logado
+// Excluir uma categoria
 exports.deletarCategoria = async (req, res) => {
   const { id } = req.params;
 
   try {
-    const queryText = 'DELETE FROM categorias WHERE id = $1 AND usuario_id = $2 RETURNING *';
-    const resultado = await db.query(queryText, [id, req.usuarioId]);
+    const queryText = 'DELETE FROM categorias WHERE id = $1 RETURNING *';
+    const resultado = await db.query(queryText, [id]);
 
     if (resultado.rows.length === 0) {
-      return res.status(404).json({ erro: 'Categoria não encontrada ou sem permissão.' });
+      return res.status(404).json({ erro: 'Categoria não encontrada.' });
     }
 
     res.status(200).json({ mensagem: 'Categoria excluída com sucesso!' });
