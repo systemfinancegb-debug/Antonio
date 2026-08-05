@@ -202,7 +202,8 @@ exports.atualizarTransacao = async (req, res) => {
     data_lancamento, 
     data_vencimento, 
     categoria_id, 
-    observacao 
+    observacao,
+    status // <-- Adicionado para capturar o status enviado pelo frontend
   } = req.body;
   const usuarioId = req.usuarioId || req.usuario?.id;
 
@@ -215,8 +216,9 @@ exports.atualizarTransacao = async (req, res) => {
           data_lancamento = $4, 
           data_vencimento = $5, 
           categoria_id = $6, 
-          observacao = $7
-      WHERE id = $8 AND deleted_at IS NULL
+          observacao = $7,
+          status = $8
+      WHERE id = $9 AND deleted_at IS NULL
       RETURNING *
     `;
 
@@ -228,6 +230,7 @@ exports.atualizarTransacao = async (req, res) => {
       data_vencimento,
       categoria_id || null,
       observacao || null,
+      status || 'PENDENTE', // <-- Garante que o status será atualizado corretamente
       id
     ];
 
