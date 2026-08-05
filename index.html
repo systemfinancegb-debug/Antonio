@@ -442,27 +442,14 @@
     <!-- ABA 4: CONTROLE DE VENCIMENTOS E PAGAMENTOS -->
     <div id="abaControle" class="tab-content">
       <div class="card-full">
-        <h2>Controle de Pagamentos e Recebimentos por Categoria</h2>
-        <p style="font-size: 13px; color: #555;">Acompanhe os vencimentos cadastrados e altere o status para gerenciar o mês atual.</p>
+        <h2>Controle de Vencimentos por Categoria</h2>
+        <p style="font-size: 13px; color: #555;">Acompanhe o dia de vencimento cadastrado para cada categoria.</p>
         
-        <div class="filtro-bar" style="margin-top: 15px;">
-          <label for="filtroMesControle">Mês Competência:</label>
-          <select id="filtroMesControle" onchange="carregarControleVencimentos()">
-            <option value="1">Janeiro</option><option value="2">Fevereiro</option><option value="3">Março</option>
-            <option value="4">Abril</option><option value="5">Maio</option><option value="6">Junho</option>
-            <option value="7">Julho</option><option value="8">Agosto</option><option value="9">Setembro</option>
-            <option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
-          </select>
-          <label for="filtroAnoControle">Ano:</label>
-          <input type="number" id="filtroAnoControle" style="width: 80px;" onchange="carregarControleVencimentos()">
-        </div>
-
         <table>
           <thead>
             <tr>
               <th>Categoria</th>
-              <th>Dia Vencimento</th>
-              <th>Status no Mês</th>
+              <th>Dia de Vencimento</th>
               <th>Ações</th>
             </tr>
           </thead>
@@ -579,7 +566,6 @@
           <label>Nome da Categoria:</label>
           <input type="text" id="edit_categoria_nome" required>
         </div>
-        <!-- CORREÇÃO AQUI: ADICIONADO O INPUT DO DIA DE VENCIMENTO NO MODAL DE EDIÇÃO -->
         <div>
           <label>Dia Padrão de Vencimento (1 a 31):</label>
           <input type="number" id="edit_categoria_dia" min="1" max="31">
@@ -665,8 +651,6 @@
     const hoje = new Date();
     document.getElementById('filtroMes').value = hoje.getMonth() + 1;
     document.getElementById('filtroAno').value = hoje.getFullYear();
-    document.getElementById('filtroMesControle').value = hoje.getMonth() + 1;
-    document.getElementById('filtroAnoControle').value = hoje.getFullYear();
     document.getElementById('data_lancamento').valueAsDate = hoje;
     
     sugerirCompetenciaVencimento();
@@ -713,8 +697,6 @@
       } else if (nomeAba === 'controle') {
         document.getElementById('abaControle').classList.add('active');
         document.getElementById('btnTabControle').classList.add('active');
-        document.getElementById('filtroMesControle').value = document.getElementById('filtroMes').value;
-        document.getElementById('filtroAnoControle').value = document.getElementById('filtroAno').value;
         carregarControleVencimentos();
       }
     }
@@ -852,7 +834,7 @@
         tbody.innerHTML = '';
 
         categoriasBrutas.forEach(cat => {
-          const diaVenc = cat.dia_vencimento ? `Dia ${cat.dia_vencimento}` : '-';
+          const diaVenc = cat.dia_vencimento ? `Dia ${cat.dia_vencimento}` : 'Não definido';
           tbody.innerHTML += `
             <tr>
               <td>${cat.id}</td>
@@ -949,38 +931,23 @@
       }
     }
 
-    // ABA 4: CONTROLE DE VENCIMENTOS
+    // ABA 4: CONTROLE DE VENCIMENTOS (ISOLADO PARA AS CATEGORIAS)
     async function carregarControleVencimentos() {
-      const mes = document.getElementById('filtroMesControle').value;
-      const ano = document.getElementById('filtroAnoControle').value;
-
       try {
         const resCat = await fetch(`${API_BASE}/categorias`, { headers: getAuthHeaders() });
         const categorias = await resCat.json();
-        
-        const resTx = await fetch(`${API_BASE}/transacoes?mes=${mes}&ano=${ano}`, { headers: getAuthHeaders() });
-        const respTx = await resTx.json();
-        const transacoes = respTx.transacoes || respTx;
+        categoriasBrutas = Array.isArray(categorias) ? categorias : [];
 
         const tbody = document.getElementById('tabelaControleVencimentos');
         tbody.innerHTML = '';
 
-        (Array.isArray(categorias) ? categorias : []).forEach(cat => {
-          const txVinculada = transacoes.find(t => t.categoria_id === cat.id);
-          const statusAtual = txVinculada ? (txVinculada.status || 'PENDENTE') : 'PENDENTE';
+        categoriasBrutas.forEach(cat => {
           const diaVenc = cat.dia_vencimento ? `Dia ${cat.dia_vencimento}` : 'Não informado';
 
           tbody.innerHTML += `
             <tr>
               <td><strong>${cat.nome}</strong></td>
               <td>${diaVenc}</td>
-              <td>
-                <select onchange="atualizarStatusCategoriaPorMes(${cat.id}, this.value, '${mes}', '${ano}')" style="padding: 5px; font-weight: bold;">
-                  <option value="PENDENTE" ${statusAtual === 'PENDENTE' ? 'selected' : ''}>Pendente</option>
-                  <option value="PAGO" ${statusAtual === 'PAGO' ? 'selected' : ''}>Pago</option>
-                  <option value="RECEBIDO" ${statusAtual === 'RECEBIDO' ? 'selected' : ''}>Recebido</option>
-                </select>
-              </td>
               <td>
                 <button class="btn-edit" onclick="abrirModalEditarCategoria(${cat.id})">Configurar Dia Venc.</button>
               </td>
@@ -989,23 +956,6 @@
         });
       } catch (err) {
         console.error('Erro ao carregar controle de vencimentos:', err);
-      }
-    }
-
-    async function atualizarStatusCategoriaPorMes(categoriaId, novoStatus, mes, ano) {
-      try {
-        const res = await fetch(`${API_BASE}/transacoes/atualizar-status-lote`, {
-          method: 'PUT',
-          headers: getAuthHeaders(),
-          body: JSON.stringify({ categoria_id: categoriaId, mes, ano, status: novoStatus })
-        });
-        if (res.ok) {
-          carregarTransacoes();
-        } else {
-          alert('Erro ao atualizar status.');
-        }
-      } catch (err) {
-        console.error('Erro na requisição:', err);
       }
     }
 
