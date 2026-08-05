@@ -396,6 +396,10 @@
             <label>Nome da Categoria:</label>
             <input type="text" id="nomeCategoria" required placeholder="Ex: Casa, Carro, Cartão X...">
           </div>
+          <div>
+            <label>Dia Padrão de Vencimento (1 a 31):</label>
+            <input type="number" id="diaVencimentoCategoria" min="1" max="31" placeholder="Ex: 10">
+          </div>
           <button type="submit">Salvar Categoria</button>
         </form>
       </div>
@@ -407,6 +411,7 @@
             <tr>
               <th>ID</th>
               <th>Nome</th>
+              <th>Dia Vencimento</th>
               <th>Ações</th>
             </tr>
           </thead>
@@ -514,6 +519,10 @@
         <div>
           <label>Nome da Categoria:</label>
           <input type="text" id="edit_categoria_nome" required>
+        </div>
+        <div>
+          <label>Dia Padrão de Vencimento (1 a 31):</label>
+          <input type="number" id="edit_categoria_dia" min="1" max="31">
         </div>
         <button type="submit" style="margin-top: 10px;">Salvar Alterações</button>
       </form>
@@ -765,7 +774,7 @@
       } catch (err) { console.error('Erro ao carregar select de categorias:', err); }
     }
 
-    // LISTAR CATEGORIAS NA TABELA (ABA CATEGORIAS) COM BOTÕES DE AÇÃO
+    // LISTAR CATEGORIAS NA TABELA (ABA CATEGORIAS) COM BOTÕES DE AÇÃO E DIA DE VENCIMENTO
     async function carregarCategoriasTabela() {
       try {
         const res = await fetch(`${API_BASE}/categorias`, { headers: getAuthHeaders() });
@@ -776,10 +785,12 @@
         tbody.innerHTML = '';
 
         categoriasBrutas.forEach(cat => {
+          const diaVenc = cat.dia_vencimento ? `Dia ${cat.dia_vencimento}` : 'Não definido';
           tbody.innerHTML += `
             <tr>
               <td>${cat.id}</td>
               <td>${cat.nome}</td>
+              <td>${diaVenc}</td>
               <td>
                 <button class="btn-edit" onclick="abrirModalEditarCategoria(${cat.id})">Editar</button>
                 <button class="btn-delete" onclick="excluirCategoria(${cat.id})">Excluir</button>
@@ -794,18 +805,20 @@
     document.getElementById('formCategoria').addEventListener('submit', async (e) => {
       e.preventDefault();
       const nome = document.getElementById('nomeCategoria').value;
+      const diaVencInput = document.getElementById('diaVencimentoCategoria').value;
+      const dia_vencimento = diaVencInput ? parseInt(diaVencInput, 10) : null;
 
       const res = await fetch(`${API_BASE}/categorias`, {
         method: 'POST',
         headers: getAuthHeaders(),
-        body: JSON.stringify({ nome })
+        body: JSON.stringify({ nome, dia_vencimento })
       });
 
       const data = await res.json();
 
       if (res.ok) {
         alert('Categoria criada com sucesso!');
-        document.getElementById('nomeCategoria').value = '';
+        document.getElementById('formCategoria').reset();
         carregarCategoriasTabela();
       } else {
         alert(data.erro || 'Erro ao criar categoria.');
@@ -819,6 +832,7 @@
 
       document.getElementById('edit_categoria_id_val').value = cat.id;
       document.getElementById('edit_categoria_nome').value = cat.nome;
+      document.getElementById('edit_categoria_dia').value = cat.dia_vencimento || '';
       document.getElementById('modalEditarCategoria').style.display = 'flex';
     }
 
@@ -830,11 +844,13 @@
       e.preventDefault();
       const id = document.getElementById('edit_categoria_id_val').value;
       const nome = document.getElementById('edit_categoria_nome').value;
+      const diaVencInput = document.getElementById('edit_categoria_dia').value;
+      const dia_vencimento = diaVencInput ? parseInt(diaVencInput, 10) : null;
 
       const res = await fetch(`${API_BASE}/categorias/${id}`, {
         method: 'PUT',
         headers: getAuthHeaders(),
-        body: JSON.stringify({ nome })
+        body: JSON.stringify({ nome, dia_vencimento })
       });
 
       const data = await res.json();
@@ -1182,13 +1198,12 @@
       }
     });
 
-    // EDIÇÃO DE TRANSAÇÃO (MODAL COM SUPORTE A REPLICAÇÃO SELETIVA EM PARCELAS)
+    // EDIÇÃO DE TRANSAÇÃO
     async function abrirModalEditar(id) {
       await carregarCategoriasSelect();
       const t = transacoesBrutas.find(item => item.id === id);
       if (!t) return alert('Transação não encontrada.');
 
-      // Guarda clone exato para comparação de mudanças no envio
       transacaoOriginalEdicao = { ...t };
 
       document.getElementById('edit_id').value = t.id;
@@ -1213,14 +1228,12 @@
       document.getElementById('modalEditar').style.display = 'none';
     }
 
-    // SALVAR EDIÇÃO E APURAR REPLICAÇÃO EM PARCELAS FUTURAS
     document.getElementById('formEditarTransacao').addEventListener('submit', async (e) => {
       e.preventDefault();
       const id = parseInt(document.getElementById('edit_id').value);
       
       const dataLancamento = document.getElementById('edit_data_lancamento').value;
       const compVenc = document.getElementById('edit_competencia_vencimento').value;
-      
       const dataVencimentoFormatada = `${compVenc}-10`;
 
       const transacaoAtualizada = {
@@ -1233,7 +1246,6 @@
         observacao: document.getElementById('edit_observacao').value.trim()
       };
 
-      // DETECTAMOS APENAS OS CAMPOS REPLICÁVEIS QUE MUDARAM
       camposAlteradosDetectados = {};
       if (transacaoAtualizada.descricao !== transacaoOriginalEdicao.descricao) {
         camposAlteradosDetectados.descricao = transacaoAtualizada.descricao;
@@ -1261,7 +1273,6 @@
       if (res.ok) {
         fecharModalEditar();
         const nomesCampos = Object.keys(camposAlteradosDetectados);
-        // Se mudou algum campo replicável, pergunta se quer aplicar em parcelas futuras
         if (nomesCampos.length > 0) {
           await verificarParcelasFuturas(id, transacaoOriginalEdicao);
         } else {
@@ -1273,7 +1284,6 @@
       }
     });
 
-    // BUSCA PARCELAS FUTURAS DA TRANSAÇÃO EDITADA (AJUSTADO PARA BLINDAR COMPARAÇÃO DE DATAS)
     async function verificarParcelasFuturas(idEditado, original) {
       try {
         const params = new URLSearchParams({
@@ -1290,9 +1300,6 @@
         if (!res.ok) throw new Error('Erro na resposta de semelhantes');
 
         const semelhantes = await res.json();
-
-        // Filtra transações que não sejam a própria que foi editada
-        // e que tenham vencimento igual ou posterior
         const dataVencOriginal = new Date(original.data_vencimento);
         listaParcelasParaAtualizar = (Array.isArray(semelhantes) ? semelhantes : []).filter(t => {
           const dataVencT = new Date(t.data_vencimento);
@@ -1348,7 +1355,6 @@
       carregarTransacoes();
     }
 
-    // NOVA FUNÇÃO: REPLICAÇÃO SEGURA VIA ROTA ÚNICA DE LOTE NO BACKEND
     async function confirmarReplicacaoParcelas() {
       const idsSelecionados = Array.from(document.querySelectorAll('.chk-parcela-futura:checked'))
                                    .map(c => parseInt(c.value));
@@ -1371,10 +1377,7 @@
         });
 
         const data = await res.json();
-
-        if (!res.ok) {
-          throw new Error(data.erro || 'Erro ao atualizar no servidor');
-        }
+        if (!res.ok) throw new Error(data.erro || 'Erro ao atualizar no servidor');
 
         alert('Parcelas atualizadas com sucesso!');
       } catch (err) {
@@ -1395,7 +1398,6 @@
 
       dados.forEach(t => {
         const dataExclusao = formatarDataBR(t.deleted_at);
-
         tbody.innerHTML += `
           <tr>
             <td>${t.descricao}</td>

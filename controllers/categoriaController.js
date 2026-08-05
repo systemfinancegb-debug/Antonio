@@ -13,15 +13,19 @@ exports.listarCategorias = async (req, res) => {
 
 // Criar uma nova categoria
 exports.criarCategoria = async (req, res) => {
-  const { nome } = req.body;
+  const { nome, dia_vencimento } = req.body;
 
   if (!nome || !nome.trim()) {
     return res.status(400).json({ erro: 'O nome da categoria é obrigatório.' });
   }
 
   try {
-    const queryText = 'INSERT INTO categorias (nome) VALUES ($1) RETURNING *';
-    const resultado = await db.query(queryText, [nome.trim()]);
+    // Tratamento opcional para garantir que o dia fique entre 1 e 31 ou nulo
+    const diaNum = parseInt(dia_vencimento, 10);
+    const valorDia = (!isNaN(diaNum) && diaNum >= 1 && diaNum <= 31) ? diaNum : null;
+
+    const queryText = 'INSERT INTO categorias (nome, dia_vencimento) VALUES ($1, $2) RETURNING *';
+    const resultado = await db.query(queryText, [nome.trim(), valorDia]);
     res.status(201).json(resultado.rows[0]);
   } catch (error) {
     if (error.code === '23505') { // Código do Postgres para UNIQUE violation
@@ -35,15 +39,19 @@ exports.criarCategoria = async (req, res) => {
 // Atualizar uma categoria existente
 exports.atualizarCategoria = async (req, res) => {
   const { id } = req.params;
-  const { nome } = req.body;
+  const { nome, dia_vencimento } = req.body;
 
   if (!nome || !nome.trim()) {
     return res.status(400).json({ erro: 'O nome da categoria é obrigatório.' });
   }
 
   try {
-    const queryText = 'UPDATE categorias SET nome = $1 WHERE id = $2 RETURNING *';
-    const resultado = await db.query(queryText, [nome.trim(), id]);
+    // Tratamento para atualizar o dia de vencimento de forma segura
+    const diaNum = parseInt(dia_vencimento, 10);
+    const valorDia = (!isNaN(diaNum) && diaNum >= 1 && diaNum <= 31) ? diaNum : null;
+
+    const queryText = 'UPDATE categorias SET nome = $1, dia_vencimento = $2 WHERE id = $3 RETURNING *';
+    const resultado = await db.query(queryText, [nome.trim(), valorDia, id]);
 
     if (resultado.rows.length === 0) {
       return res.status(404).json({ erro: 'Categoria não encontrada.' });
