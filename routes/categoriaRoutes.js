@@ -6,6 +6,9 @@ const autenticarToken = require('../middlewares/authMiddleware');
 // Protege todas as rotas de categoria exigindo o token JWT
 router.use(autenticarToken);
 
+// Rota específica deve vir ANTES de rotas com parâmetros como /:id
+router.get('/vencimentos', categoriaController.listarCategoriasComVencimento);
+
 router.get('/', categoriaController.listarCategorias);
 router.post('/', categoriaController.criarCategoria);
 
