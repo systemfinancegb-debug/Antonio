@@ -11,6 +11,18 @@ exports.listarCategorias = async (req, res) => {
   }
 };
 
+// Listar apenas categorias que possuem dia de vencimento informado
+exports.listarCategoriasComVencimento = async (req, res) => {
+  try {
+    const queryText = 'SELECT * FROM categorias WHERE dia_vencimento IS NOT NULL ORDER BY dia_vencimento ASC';
+    const resultado = await db.query(queryText);
+    res.status(200).json(resultado.rows);
+  } catch (error) {
+    console.error('Erro ao listar categorias com vencimento:', error);
+    res.status(500).json({ erro: 'Erro interno ao listar vencimentos' });
+  }
+};
+
 // Criar uma nova categoria
 exports.criarCategoria = async (req, res) => {
   const { nome, dia_vencimento } = req.body;

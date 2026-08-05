@@ -196,6 +196,7 @@
       <button class="tab-btn active" id="btnTabConsulta" onclick="trocarAba('consulta')">📊 Consultar Transações</button>
       <button class="tab-btn" id="btnTabNovo" onclick="trocarAba('novo')">➕ Novo Lançamento</button>
       <button class="tab-btn" id="btnTabCategorias" onclick="trocarAba('categorias')">🏷️ Categorias</button>
+      <button class="tab-btn" id="btnTabStatusVencimentos" onclick="trocarAba('statusVencimentos')">✅ Status de Vencimentos</button>
     </div>
 
     <!-- ABA 1: CONSULTAR TRANSAÇÕES -->
@@ -420,6 +421,38 @@
       </div>
     </div>
 
+    <!-- ABA 4: STATUS DE VENCIMENTOS DAS CATEGORIAS -->
+    <div id="abaStatusVencimentos" class="tab-content">
+      <div class="card-full">
+        <h2>Controle de Status das Categorias</h2>
+        <p style="font-size: 13px; color: #555;">Acompanhe o status mensal das categorias que possuem dia de vencimento definido.</p>
+        
+        <div class="filtro-bar" style="margin-top: 15px;">
+          <label for="filtroMesStatus">Mês:</label>
+          <select id="filtroMesStatus" onchange="carregarStatusVencimentosCategorias()">
+            <option value="1">Janeiro</option><option value="2">Fevereiro</option><option value="3">Março</option>
+            <option value="4">Abril</option><option value="5">Maio</option><option value="6">Junho</option>
+            <option value="7">Julho</option><option value="8">Agosto</option><option value="9">Setembro</option>
+            <option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
+          </select>
+          <label for="filtroAnoStatus">Ano:</label>
+          <input type="number" id="filtroAnoStatus" style="width: 80px;" onchange="carregarStatusVencimentosCategorias()">
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Dia de Vencimento</th>
+              <th>Categoria</th>
+              <th>Status no Mês</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="tabelaStatusVencimentos"></tbody>
+        </table>
+      </div>
+    </div>
+
   </div>
 
   <!-- MODAL DE EDIÇÃO DE TRANSAÇÃO -->
@@ -605,6 +638,8 @@
     const hoje = new Date();
     document.getElementById('filtroMes').value = hoje.getMonth() + 1;
     document.getElementById('filtroAno').value = hoje.getFullYear();
+    document.getElementById('filtroMesStatus').value = hoje.getMonth() + 1;
+    document.getElementById('filtroAnoStatus').value = hoje.getFullYear();
     document.getElementById('data_lancamento').valueAsDate = hoje;
     
     sugerirCompetenciaVencimento();
@@ -649,6 +684,57 @@
         document.getElementById('abaCategorias').classList.add('active');
         document.getElementById('btnTabCategorias').classList.add('active');
         carregarCategoriasTabela();
+      } else if (nomeAba === 'statusVencimentos') {
+        document.getElementById('abaStatusVencimentos').classList.add('active');
+        document.getElementById('btnTabStatusVencimentos').classList.add('active');
+        carregarStatusVencimentosCategorias();
+      }
+    }
+
+    // CARREGA APENAS CATEGORIAS COM VENCIMENTO E CRUZAMENTO DE TRANSAÇÕES
+    async function carregarStatusVencimentosCategorias() {
+      const mes = document.getElementById('filtroMesStatus').value;
+      const ano = document.getElementById('filtroAnoStatus').value;
+
+      try {
+        const resCat = await fetch(`${API_BASE}/categorias/vencimentos`, { headers: getAuthHeaders() });
+        const categorias = await resCat.json();
+
+        const resTx = await fetch(`${API_BASE}/transacoes?mes=${mes}&ano=${ano}`, { headers: getAuthHeaders() });
+        const respTx = await resTx.json();
+        const transacoes = respTx.transacoes || respTx;
+
+        const tbody = document.getElementById('tabelaStatusVencimentos');
+        tbody.innerHTML = '';
+
+        const listaValida = Array.isArray(categorias) ? categorias : [];
+
+        if (listaValida.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="4" style="text-align: center;">Nenhuma categoria com dia de vencimento cadastrado.</td></tr>`;
+          return;
+        }
+
+        listaValida.forEach(cat => {
+          const txVinculada = transacoes.find(t => t.categoria_id === cat.id);
+          const statusAtual = txVinculada ? (txVinculada.status || 'PENDENTE') : 'PENDENTE';
+          
+          const badgeStatus = statusAtual === 'PAGO' || statusAtual === 'RECEBIDO' 
+            ? '<span style="color: #27ae60; font-weight: bold;">🟢 OK</span>' 
+            : '<span style="color: #e67e22; font-weight: bold;">🟠 Pendente</span>';
+
+          tbody.innerHTML += `
+            <tr>
+              <td><strong>Dia ${cat.dia_vencimento}</strong></td>
+              <td>${cat.nome}</td>
+              <td>${badgeStatus}</td>
+              <td>
+                <button class="btn-edit" onclick="abrirModalEditarCategoria(${cat.id})">Editar Dia</button>
+              </td>
+            </tr>
+          `;
+        });
+      } catch (err) {
+        console.error('Erro ao carregar status de vencimentos:', err);
       }
     }
 
