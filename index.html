@@ -10,12 +10,11 @@
     
     /* AUTENTICAÇÃO */
     .auth-container { max-width: 400px; margin: 80px auto; background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-    .auth-toggle { text-align: center; margin-top: 15px; font-size: 14px; cursor: pointer; color: #2980b9; text-decoration: underline; }
 
     /* PAINEL PRINCIPAL */
     #painelSistema { display: none; }
     .header-actions { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-    .user-info { font-size: 14px; color: #555; }
+    .user-info { font-size: 14px; color: #555; display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
     
     /* NAVEGAÇÃO POR ABAS */
     .nav-tabs { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #ddd; padding-bottom: 10px; flex-wrap: wrap; }
@@ -68,10 +67,15 @@
     .btn-edit:hover { background-color: #2980b9; }
     .btn-delete { background-color: #e74c3c; padding: 6px 12px; font-size: 12px; }
     .btn-delete:hover { background-color: #c0392b; }
-    .btn-lixeira { background-color: #7f8c8d; }
-    .btn-sair { background-color: #c0392b; padding: 5px 10px; margin-left: 10px; }
+    .btn-archive { background-color: #f39c12; padding: 6px 12px; font-size: 12px; margin-right: 4px; }
+    .btn-archive:hover { background-color: #d35400; }
+    .btn-unarchive { background-color: #27ae60; padding: 6px 12px; font-size: 12px; margin-right: 4px; }
+    .btn-unarchive:hover { background-color: #219150; }
+    .btn-lixeira { background-color: #7f8c8d; padding: 5px 10px; }
+    .btn-config { background-color: #34495e; padding: 5px 10px; }
+    .btn-sair { background-color: #c0392b; padding: 5px 10px; }
 
-    /* TABELA E CABEÇALHO CORRIGIDOS (SEM POSICIONAMENTO ABSOLUTO/FIXED) */
+    /* TABELA E CABEÇALHO */
     table { width: 100%; border-collapse: collapse; margin-top: 10px; min-width: 700px; }
     th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
     th { background-color: #2c3e50; color: white; vertical-align: top; user-select: none; position: static; }
@@ -157,14 +161,10 @@
 </head>
 <body>
 
-  <!-- TELA DE AUTENTICAÇÃO -->
+  <!-- TELA DE AUTENTICAÇÃO (APENAS LOGIN) -->
   <div id="telaAuth" class="auth-container">
-    <h2 id="tituloAuth">Entrar no Sistema</h2>
+    <h2>Entrar no Sistema</h2>
     <form id="formAuth">
-      <div id="campoNome" style="display: none;">
-        <label>Nome:</label>
-        <input type="text" id="authNome" placeholder="Seu nome completo">
-      </div>
       <div>
         <label>E-mail:</label>
         <input type="email" id="authEmail" placeholder="seu@email.com" required>
@@ -175,9 +175,6 @@
       </div>
       <button type="submit" id="btnAuthSubmit">Entrar</button>
     </form>
-    <div class="auth-toggle" onclick="alternarModoAuth()" id="textoToggle">
-      Não tem uma conta? Cadastre-se
-    </div>
   </div>
 
   <!-- PAINEL DO SISTEMA -->
@@ -186,6 +183,7 @@
       <h1>Sistema Financeiro</h1>
       <div class="user-info">
         Olá, <strong id="usuarioNome">-</strong>
+        <button class="btn-config" onclick="abrirModalUsuarios()" title="Gerenciar Usuários">⚙️</button>
         <button class="btn-lixeira" onclick="abrirLixeira()">🗑️ Lixeira</button>
         <button class="btn-sair" onclick="fazerLogout()">Sair</button>
       </div>
@@ -413,6 +411,7 @@
               <th>ID</th>
               <th>Nome</th>
               <th>Dia Vencimento</th>
+              <th>Status</th>
               <th>Ações</th>
             </tr>
           </thead>
@@ -425,7 +424,7 @@
     <div id="abaStatusVencimentos" class="tab-content">
       <div class="card-full">
         <h2>Controle de Status das Categorias</h2>
-        <p style="font-size: 13px; color: #555;">Acompanhe o status mensal das categorias que possuem dia de vencimento definido.</p>
+        <p style="font-size: 13px; color: #555;">Acompanhe o status mensal das categorias ativas que possuem dia de vencimento definido.</p>
         
         <div class="filtro-bar" style="margin-top: 15px;">
           <label for="filtroMesStatus">Mês:</label>
@@ -612,9 +611,54 @@
     </div>
   </div>
 
+  <!-- MODAL DE GERENCIAR USUÁRIOS -->
+  <div id="modalUsuarios" class="modal-overlay">
+    <div class="modal-content" style="max-width: 650px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <h2>⚙️ Gerenciar Usuários</h2>
+        <button onclick="fecharModalUsuarios()" style="background:#95a5a6; padding: 5px 10px;">✖ Fechar</button>
+      </div>
+
+      <!-- Formulário para Criar ou Atualizar Usuário -->
+      <form id="formUsuarioModal" style="background: #f9f9f9; padding: 15px; border-radius: 6px; margin-bottom: 20px; border: 1px solid #ddd;">
+        <h3 id="tituloFormUsuario" style="font-size: 15px; margin-bottom: 10px;">Novo Usuário</h3>
+        <input type="hidden" id="modal_usuario_id">
+        <div>
+          <label>Nome:</label>
+          <input type="text" id="modal_usuario_nome" required placeholder="Nome do usuário">
+        </div>
+        <div>
+          <label>E-mail:</label>
+          <input type="email" id="modal_usuario_email" required placeholder="email@email.com">
+        </div>
+        <div>
+          <label>Senha <span id="labelSenhaInfo" style="font-size: 11px; color: #7f8c8d;">(Obrigatório para novo usuário)</span>:</label>
+          <input type="password" id="modal_usuario_senha" placeholder="******">
+        </div>
+        <div style="display: flex; gap: 10px; margin-top: 5px;">
+          <button type="submit" id="btnSalvarUsuarioModal" style="background-color: #27ae60;">Salvar Usuário</button>
+          <button type="button" onclick="limparFormularioUsuario()" style="background-color: #7f8c8d; display: none;" id="btnCancelarEdicaoUsuario">Cancelar</button>
+        </div>
+      </form>
+
+      <!-- Tabela de Usuários Existentes -->
+      <h3>Usuários Cadastrados</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Nome</th>
+            <th>E-mail</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody id="tabelaUsuariosModal"></tbody>
+      </table>
+    </div>
+  </div>
+
   <script>
     const API_BASE = 'https://financeiro-tk6q.onrender.com/api';
-    let modoCadastro = false;
 
     // ESTADO GLOBAL DE DADOS
     let transacoesBrutas = [];
@@ -691,7 +735,7 @@
       }
     }
 
-    // CARREGA APENAS CATEGORIAS COM VENCIMENTO E CRUZAMENTO DE TRANSAÇÕES
+    // CARREGA CATEGORIAS E FILTRA AS ARQUIVADAS CONFORME A EXISTÊNCIA DE MOVIMENTAÇÃO NO MÊS
     async function carregarStatusVencimentosCategorias() {
       const mes = document.getElementById('filtroMesStatus').value;
       const ano = document.getElementById('filtroAnoStatus').value;
@@ -707,14 +751,21 @@
         const tbody = document.getElementById('tabelaStatusVencimentos');
         tbody.innerHTML = '';
 
-        const listaValida = Array.isArray(categorias) ? categorias : [];
+        const listaBruta = Array.isArray(categorias) ? categorias : [];
 
-        if (listaValida.length === 0) {
-          tbody.innerHTML = `<tr><td colspan="4" style="text-align: center;">Nenhuma categoria com dia de vencimento cadastrado.</td></tr>`;
+        // Exibe ativas sempre; exibição de arquivadas condicionada à existência de movimentação no período
+        const listaExibicao = listaBruta.filter(cat => {
+          const temTransacaoNoMes = transacoes.some(t => t.categoria_id === cat.id);
+          if (!cat.arquivado) return true;
+          return temTransacaoNoMes;
+        });
+
+        if (listaExibicao.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="4" style="text-align: center;">Nenhuma categoria com vencimento para exibir neste período.</td></tr>`;
           return;
         }
 
-        listaValida.forEach(cat => {
+        listaExibicao.forEach(cat => {
           const txVinculada = transacoes.find(t => t.categoria_id === cat.id);
           const statusAtual = txVinculada ? (txVinculada.status || 'PENDENTE') : 'PENDENTE';
           
@@ -722,6 +773,8 @@
           const badgeStatus = isOk 
             ? '<span style="color: #27ae60; font-weight: bold;">🟢 OK</span>' 
             : '<span style="color: #e67e22; font-weight: bold;">🟠 Pendente</span>';
+
+          const sufixoArquivado = cat.arquivado ? ' <span style="font-size: 11px; color: #7f8c8d;">(Arquivada)</span>' : '';
 
           let acaoHTML = '';
           if (txVinculada) {
@@ -742,7 +795,7 @@
           tbody.innerHTML += `
             <tr>
               <td><strong>Dia ${cat.dia_vencimento}</strong></td>
-              <td>${cat.nome}</td>
+              <td>${cat.nome}${sufixoArquivado}</td>
               <td>${badgeStatus}</td>
               <td>${acaoHTML}</td>
             </tr>
@@ -797,44 +850,37 @@
       }
     }
 
-    function alternarModoAuth() {
-      modoCadastro = !modoCadastro;
-      document.getElementById('campoNome').style.display = modoCadastro ? 'block' : 'none';
-      document.getElementById('tituloAuth').innerText = modoCadastro ? 'Criar Conta' : 'Entrar no Sistema';
-      document.getElementById('btnAuthSubmit').innerText = modoCadastro ? 'Cadastrar' : 'Entrar';
-      document.getElementById('textoToggle').innerText = modoCadastro ? 'Já tem conta? Faça Login' : 'Não tem uma conta? Cadastre-se';
-    }
-
-    // AUTH
+    // AUTH (APENAS LOGIN)
     document.getElementById('formAuth').addEventListener('submit', async (e) => {
       e.preventDefault();
       const email = document.getElementById('authEmail').value;
       const senha = document.getElementById('authSenha').value;
-      const nome = document.getElementById('authNome').value;
 
-      const endpoint = modoCadastro ? `${API_BASE}/auth/cadastrar` : `${API_BASE}/auth/login`;
-      const bodyData = modoCadastro ? { nome, email, senha } : { email, senha };
+      const btnAuth = document.getElementById('btnAuthSubmit');
+      btnAuth.disabled = true;
+      btnAuth.innerText = 'Entrando...';
 
       try {
-        const res = await fetch(endpoint, {
+        const res = await fetch(`${API_BASE}/auth/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(bodyData)
+          body: JSON.stringify({ email, senha })
         });
         const data = await res.json();
 
-        if (!res.ok) return alert(data.erro || 'Erro ao autenticar');
-
-        if (modoCadastro) {
-          alert('Conta criada com sucesso! Faça login.');
-          alternarModoAuth();
-        } else {
-          localStorage.setItem('token', data.token);
-          localStorage.setItem('usuario', JSON.stringify(data.usuario));
-          verificarAutenticacao();
+        if (!res.ok) {
+          alert(data.erro || 'Erro ao autenticar no sistema');
+          return;
         }
+
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('usuario', JSON.stringify(data.usuario));
+        verificarAutenticacao();
       } catch (err) {
         alert('Erro ao conectar com o servidor.');
+      } finally {
+        btnAuth.disabled = false;
+        btnAuth.innerText = 'Entrar';
       }
     });
 
@@ -901,7 +947,7 @@
       }
     }
 
-    // LISTAR CATEGORIAS NO SELECT
+    // LISTAR CATEGORIAS NO SELECT (CONTINUA EXIBINDO TODAS AS CATEGORIAS PARA PERMITIR LANÇAMENTO E REATIVAÇÃO)
     async function carregarCategoriasSelect() {
       try {
         const res = await fetch(`${API_BASE}/categorias`, { headers: getAuthHeaders() });
@@ -909,7 +955,7 @@
         categoriasBrutas = Array.isArray(categorias) ? categorias : [];
 
         const optionsHTML = '<option value="">Sem categoria</option>' + 
-          categoriasBrutas.map(cat => `<option value="${cat.id}">${cat.nome}</option>`).join('');
+          categoriasBrutas.map(cat => `<option value="${cat.id}">${cat.nome}${cat.arquivado ? ' (Arquivada)' : ''}</option>`).join('');
 
         const select = document.getElementById('categoria_id');
         const editSelect = document.getElementById('edit_categoria_id');
@@ -919,7 +965,7 @@
       } catch (err) { console.error('Erro ao carregar select de categorias:', err); }
     }
 
-    // LISTAR CATEGORIAS NA TABELA (ABA CATEGORIAS) COM BOTÕES DE AÇÃO E DIA DE VENCIMENTO
+    // LISTAR CATEGORIAS NA TABELA (ABA CATEGORIAS) COM BOTÃO DE ARQUIVAR / DESARQUIVAR
     async function carregarCategoriasTabela() {
       try {
         const res = await fetch(`${API_BASE}/categorias`, { headers: getAuthHeaders() });
@@ -931,12 +977,21 @@
 
         categoriasBrutas.forEach(cat => {
           const diaVenc = cat.dia_vencimento ? `Dia ${cat.dia_vencimento}` : 'Não definido';
+          const badgeStatus = cat.arquivado 
+            ? '<span style="color: #e67e22; font-weight: bold;">📁 Arquivada</span>' 
+            : '<span style="color: #27ae60; font-weight: bold;">🟢 Ativa</span>';
+
+          const btnArquivarText = cat.arquivado ? 'Desarquivar' : 'Arquivar';
+          const btnClass = cat.arquivado ? 'btn-unarchive' : 'btn-archive';
+
           tbody.innerHTML += `
             <tr>
               <td>${cat.id}</td>
               <td>${cat.nome}</td>
               <td>${diaVenc}</td>
+              <td>${badgeStatus}</td>
               <td>
+                <button class="${btnClass}" onclick="alternarArquivarCategoria(${cat.id}, ${Boolean(cat.arquivado)})">${btnArquivarText}</button>
                 <button class="btn-edit" onclick="abrirModalEditarCategoria(${cat.id})">Editar</button>
                 <button class="btn-delete" onclick="excluirCategoria(${cat.id})">Excluir</button>
               </td>
@@ -944,6 +999,27 @@
           `;
         });
       } catch (err) { console.error('Erro ao carregar tabela de categorias:', err); }
+    }
+
+    // FUNÇÃO PARA ARQUIVAR OU DESARQUIVAR CATEGORIA
+    async function alternarArquivarCategoria(id, statusArquivadoAtual) {
+      try {
+        const res = await fetch(`${API_BASE}/categorias/${id}/arquivar`, {
+          method: 'PATCH',
+          headers: getAuthHeaders(),
+          body: JSON.stringify({ arquivado: !statusArquivadoAtual })
+        });
+
+        if (res.ok) {
+          carregarCategoriasTabela();
+        } else {
+          const data = await res.json();
+          alert(data.erro || 'Erro ao alterar status da categoria.');
+        }
+      } catch (err) {
+        console.error('Erro ao arquivar/desarquivar categoria:', err);
+        alert('Erro de conexão ao alterar o status da categoria.');
+      }
     }
 
     // CADASTRAR CATEGORIA
@@ -1360,6 +1436,9 @@
           document.getElementById('parcelas').value = 1;
           document.getElementById('data_lancamento').valueAsDate = new Date();
           sugerirCompetenciaVencimento();
+          
+          // Recarrega o select das categorias caso uma categoria tenha sido desarquivada via trigger
+          await carregarCategoriasSelect();
           trocarAba('consulta');
         } else {
           alert('Erro ao cadastrar transação.');
@@ -1587,6 +1666,111 @@
     function fecharLixeira() {
       document.getElementById('modalLixeira').style.display = 'none';
     }
+
+    // GESTÃO DE USUÁRIOS
+    async function abrirModalUsuarios() {
+      document.getElementById('modalUsuarios').style.display = 'flex';
+      limparFormularioUsuario();
+      carregarUsuariosModal();
+    }
+
+    function fecharModalUsuarios() {
+      document.getElementById('modalUsuarios').style.display = 'none';
+    }
+
+    function limparFormularioUsuario() {
+      document.getElementById('modal_usuario_id').value = '';
+      document.getElementById('modal_usuario_nome').value = '';
+      document.getElementById('modal_usuario_email').value = '';
+      document.getElementById('modal_usuario_senha').value = '';
+      document.getElementById('tituloFormUsuario').innerText = 'Novo Usuário';
+      document.getElementById('btnSalvarUsuarioModal').innerText = 'Salvar Usuário';
+      document.getElementById('btnCancelarEdicaoUsuario').style.display = 'none';
+      document.getElementById('labelSenhaInfo').innerText = '(Obrigatório para novo usuário)';
+    }
+
+    async function carregarUsuariosModal() {
+      try {
+        const res = await fetch(`${API_BASE}/usuarios`, { headers: getAuthHeaders() });
+        if (!res.ok) throw new Error('Erro ao buscar usuários');
+        
+        const usuarios = await res.json();
+        const tbody = document.getElementById('tabelaUsuariosModal');
+        tbody.innerHTML = '';
+
+        const lista = Array.isArray(usuarios) ? usuarios : [];
+
+        if (lista.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="4" style="text-align: center;">Nenhum usuário encontrado.</td></tr>`;
+          return;
+        }
+
+        lista.forEach(u => {
+          tbody.innerHTML += `
+            <tr>
+              <td>${u.id}</td>
+              <td>${u.nome}</td>
+              <td>${u.email}</td>
+              <td>
+                <button class="btn-edit" onclick="prepararEdicaoUsuario(${u.id}, '${u.nome}', '${u.email}')">Editar</button>
+              </td>
+            </tr>
+          `;
+        });
+      } catch (err) {
+        console.error('Erro ao carregar usuários:', err);
+      }
+    }
+
+    function prepararEdicaoUsuario(id, nome, email) {
+      document.getElementById('modal_usuario_id').value = id;
+      document.getElementById('modal_usuario_nome').value = nome;
+      document.getElementById('modal_usuario_email').value = email;
+      document.getElementById('modal_usuario_senha').value = '';
+      document.getElementById('tituloFormUsuario').innerText = `Editar Usuário: ${nome}`;
+      document.getElementById('btnSalvarUsuarioModal').innerText = 'Atualizar Usuário';
+      document.getElementById('btnCancelarEdicaoUsuario').style.display = 'inline-block';
+      document.getElementById('labelSenhaInfo').innerText = '(Deixe em branco para manter a senha atual)';
+    }
+
+    document.getElementById('formUsuarioModal').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const id = document.getElementById('modal_usuario_id').value;
+      const nome = document.getElementById('modal_usuario_nome').value;
+      const email = document.getElementById('modal_usuario_email').value;
+      const senha = document.getElementById('modal_usuario_senha').value;
+
+      const isEdicao = Boolean(id);
+      const endpoint = isEdicao ? `${API_BASE}/usuarios/${id}` : `${API_BASE}/usuarios`;
+      const metodo = isEdicao ? 'PUT' : 'POST';
+
+      const payload = { nome, email };
+      if (senha || !isEdicao) {
+        payload.senha = senha;
+      }
+
+      try {
+        const res = await fetch(endpoint, {
+          method: metodo,
+          headers: getAuthHeaders(),
+          body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          alert(data.erro || 'Erro ao salvar usuário.');
+          return;
+        }
+
+        alert(isEdicao ? 'Usuário atualizado com sucesso!' : 'Usuário criado com sucesso!');
+        limparFormularioUsuario();
+        carregarUsuariosModal();
+      } catch (err) {
+        console.error('Erro ao salvar usuário:', err);
+        alert('Erro de conexão com o servidor.');
+      }
+    });
 
     verificarAutenticacao();
   </script>

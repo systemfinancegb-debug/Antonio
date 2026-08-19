@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const cron = require('node-cron');
+const bcrypt = require('bcrypt');
 const db = require('./db');
 require('dotenv').config();
 
@@ -15,7 +16,7 @@ const app = express();
 // Configuração explícita do CORS
 app.use(cors({
   origin: '*',
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
@@ -29,7 +30,7 @@ app.get('/', (req, res) => {
 // 2. ROTA PÚBLICA DE AUTENTICAÇÃO (Login / Cadastro)
 app.use('/api/auth', authRoutes);
 
-// --- NOVA ROTA DE REPLICAÇÃO EM LOTE (Evita Erro 500 e atualiza em uma única chamada) ---
+// --- ROTA DE REPLICAÇÃO EM LOTE ---
 app.put('/api/transacoes/replicar-lote', authMiddleware, async (req, res) => {
   const { ids_parcelas, alteracoes } = req.body;
 
@@ -43,11 +44,9 @@ app.put('/api/transacoes/replicar-lote', authMiddleware, async (req, res) => {
   }
 
   try {
-    // Monta dinamicamente a query de UPDATE baseada estritamente nos campos alterados
     const setQuery = campos.map((campo, index) => `${campo} = $${index + 1}`).join(', ');
     const valoresBase = campos.map(campo => alteracoes[campo]);
 
-    // Executa a atualização para cada ID de parcela vinculado ao usuário logado
     for (const id of ids_parcelas) {
       const queryFinal = `UPDATE transacoes SET ${setQuery} WHERE id = $${campos.length + 1} AND usuario_id = $${campos.length + 2}`;
       await db.query(queryFinal, [...valoresBase, id, req.usuarioId]);
@@ -60,11 +59,88 @@ app.put('/api/transacoes/replicar-lote', authMiddleware, async (req, res) => {
   }
 });
 
-// 3. ROTAS PROTEGIDAS (Exigem o Token JWT para acessar)
+// --- ROTAS DE GERENCIAMENTO DE USUÁRIOS ---
+
+// Listar todos os usuários
+app.get('/api/usuarios', authMiddleware, async (req, res) => {
+  try {
+    const resultado = await db.query('SELECT id, nome, email FROM usuarios ORDER BY id ASC');
+    res.json(resultado.rows);
+  } catch (err) {
+    console.error('❌ Erro ao buscar usuários:', err);
+    res.status(500).json({ erro: 'Erro interno ao buscar usuários.' });
+  }
+});
+
+// Cadastrar novo usuário
+app.post('/api/usuarios', authMiddleware, async (req, res) => {
+  const { nome, email, senha } = req.body;
+  if (!nome || !email || !senha) {
+    return res.status(400).json({ erro: 'Preencha todos os campos obrigatórios.' });
+  }
+
+  try {
+    const senhaHash = await bcrypt.hash(senha, 10);
+    const query = 'INSERT INTO usuarios (nome, email, senha) VALUES ($1, $2, $3) RETURNING id, nome, email';
+    const novoUsuario = await db.query(query, [nome, email, senhaHash]);
+    res.status(201).json(novoUsuario.rows[0]);
+  } catch (err) {
+    console.error('❌ Erro ao cadastrar usuário:', err);
+    res.status(500).json({ erro: 'Erro ao cadastrar usuário (e-mail já pode estar em uso).' });
+  }
+});
+
+// Atualizar usuário existente
+app.put('/api/usuarios/:id', authMiddleware, async (req, res) => {
+  const { id } = req.params;
+  const { nome, email, senha } = req.body;
+
+  try {
+    if (senha) {
+      const senhaHash = await bcrypt.hash(senha, 10);
+      const query = 'UPDATE usuarios SET nome = $1, email = $2, senha = $3 WHERE id = $4 RETURNING id, nome, email';
+      const atualizado = await db.query(query, [nome, email, senhaHash, id]);
+      return res.json(atualizado.rows[0]);
+    } else {
+      const query = 'UPDATE usuarios SET nome = $1, email = $2 WHERE id = $3 RETURNING id, nome, email';
+      const atualizado = await db.query(query, [nome, email, id]);
+      return res.json(atualizado.rows[0]);
+    }
+  } catch (err) {
+    console.error('❌ Erro ao atualizar usuário:', err);
+    res.status(500).json({ erro: 'Erro ao atualizar usuário.' });
+  }
+});
+
+// --- ROTA DEDICADA PARA ARQUIVAR / DESARQUIVAR CATEGORIA ---
+app.patch('/api/categorias/:id/arquivar', authMiddleware, async (req, res) => {
+  const { id } = req.params;
+  const { arquivado } = req.body;
+
+  if (typeof arquivado !== 'boolean') {
+    return res.status(400).json({ erro: 'O campo "arquivado" deve ser booleano (true ou false).' });
+  }
+
+  try {
+    const query = 'UPDATE categorias SET arquivado = $1 WHERE id = $2 RETURNING *';
+    const resultado = await db.query(query, [arquivado, id]);
+
+    if (resultado.rowCount === 0) {
+      return res.status(404).json({ erro: 'Categoria não encontrada.' });
+    }
+
+    res.json(resultado.rows[0]);
+  } catch (err) {
+    console.error('❌ Erro ao alterar status de arquivamento da categoria:', err);
+    res.status(500).json({ erro: 'Erro interno ao atualizar categoria.' });
+  }
+});
+
+// 3. ROTAS PROTEGIDAS
 app.use('/api/transacoes', authMiddleware, transacaoRoutes);
 app.use('/api/categorias', authMiddleware, categoriaRoutes);
 
-// 4. TAREFA AGENDADA: Limpeza diária da lixeira (itens com mais de 6 meses)
+// 4. TAREFA AGENDADA: Limpeza diária da lixeira
 cron.schedule('0 0 * * *', async () => {
   console.log('🧹 Executando limpeza da lixeira (itens excluídos há mais de 6 meses)...');
   
