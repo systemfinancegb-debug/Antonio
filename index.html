@@ -613,7 +613,7 @@
 
   <!-- MODAL DE GERENCIAR USUÁRIOS -->
   <div id="modalUsuarios" class="modal-overlay">
-    <div class="modal-content" style="max-width: 650px;">
+    <div class="modal-content" style="max-width: 750px;">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
         <h2>⚙️ Gerenciar Usuários</h2>
         <button onclick="fecharModalUsuarios()" style="background:#95a5a6; padding: 5px 10px;">✖ Fechar</button>
@@ -648,6 +648,7 @@
           <tr>
             <th>Nome</th>
             <th>E-mail</th>
+            <th>Status</th>
             <th>Ações</th>
           </tr>
         </thead>
@@ -1697,23 +1698,83 @@
         const lista = Array.isArray(usuarios) ? usuarios : [];
 
         if (lista.length === 0) {
-          tbody.innerHTML = `<tr><td colspan="3" style="text-align: center;">Nenhum usuário encontrado.</td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="4" style="text-align: center;">Nenhum usuário encontrado.</td></tr>`;
           return;
         }
 
         lista.forEach(u => {
+          const isAtivo = u.ativo !== false;
+          const badgeStatus = isAtivo 
+            ? '<span style="color: #27ae60; font-weight: bold;">🟢 Ativo</span>' 
+            : '<span style="color: #e74c3c; font-weight: bold;">🔴 Inativo</span>';
+
+          const btnStatusText = isAtivo ? 'Desativar' : 'Ativar';
+          const btnStatusClass = isAtivo ? 'btn-archive' : 'btn-unarchive';
+
           tbody.innerHTML += `
             <tr>
               <td>${u.nome}</td>
               <td>${u.email}</td>
+              <td>${badgeStatus}</td>
               <td>
                 <button class="btn-edit" onclick="prepararEdicaoUsuario(${u.id}, '${u.nome}', '${u.email}')">Editar</button>
+                <button class="${btnStatusClass}" onclick="alternarStatusUsuario(${u.id}, ${isAtivo})">${btnStatusText}</button>
+                <button class="btn-delete" onclick="excluirUsuarioPermanente(${u.id})">Excluir</button>
               </td>
             </tr>
           `;
         });
       } catch (err) {
         console.error('Erro ao carregar usuários:', err);
+      }
+    }
+
+    // ALTERNAR STATUS DE ATIVO / INATIVO
+    async function alternarStatusUsuario(id, statusAtivoAtual) {
+      const acao = statusAtivoAtual ? 'desativar' : 'ativar';
+      if (!confirm(`Deseja realmente ${acao} este usuário?`)) return;
+
+      try {
+        const res = await fetch(`${API_BASE}/usuarios/${id}/status`, {
+          method: 'PATCH',
+          headers: getAuthHeaders(),
+          body: JSON.stringify({ ativo: !statusAtivoAtual })
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+          carregarUsuariosModal();
+        } else {
+          alert(data.erro || 'Erro ao alterar status do usuário.');
+        }
+      } catch (err) {
+        console.error('Erro ao alterar status do usuário:', err);
+        alert('Erro de conexão com o servidor.');
+      }
+    }
+
+    // EXCLUIR USUÁRIO PERMANENTEMENTE
+    async function excluirUsuarioPermanente(id) {
+      if (!confirm('Atenção: Esta ação removerá o usuário do banco de dados. Deseja continuar?')) return;
+
+      try {
+        const res = await fetch(`${API_BASE}/usuarios/${id}`, {
+          method: 'DELETE',
+          headers: getAuthHeaders()
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+          alert('Usuário excluído permanentemente!');
+          carregarUsuariosModal();
+        } else {
+          alert(data.erro || 'Erro ao excluir usuário.');
+        }
+      } catch (err) {
+        console.error('Erro ao excluir usuário:', err);
+        alert('Erro de conexão com o servidor.');
       }
     }
 
