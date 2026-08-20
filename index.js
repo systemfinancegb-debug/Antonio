@@ -64,10 +64,10 @@ app.put('/api/transacoes/replicar-lote', authMiddleware, async (req, res) => {
 
 // --- ROTAS DE GERENCIAMENTO DE USUÁRIOS ---
 
-// Listar todos os usuários (Oculta o usuário Master)
+// Listar todos os usuários (Oculta o usuário Master e retorna o campo "ativo")
 app.get('/api/usuarios', authMiddleware, async (req, res) => {
   try {
-    const query = 'SELECT id, nome, email FROM usuarios WHERE email != $1 ORDER BY id ASC';
+    const query = 'SELECT id, nome, email, COALESCE(ativo, true) AS ativo FROM usuarios WHERE email != $1 ORDER BY id ASC';
     const resultado = await db.query(query, [EMAIL_MASTER]);
     res.json(resultado.rows);
   } catch (err) {
@@ -85,7 +85,7 @@ app.post('/api/usuarios', authMiddleware, async (req, res) => {
 
   try {
     const senhaHash = await bcrypt.hash(senha, 10);
-    const query = 'INSERT INTO usuarios (nome, email, senha) VALUES ($1, $2, $3) RETURNING id, nome, email';
+    const query = 'INSERT INTO usuarios (nome, email, senha, ativo) VALUES ($1, $2, $3, true) RETURNING id, nome, email, ativo';
     const novoUsuario = await db.query(query, [nome, email, senhaHash]);
     res.status(201).json(novoUsuario.rows[0]);
   } catch (err) {
@@ -94,26 +94,64 @@ app.post('/api/usuarios', authMiddleware, async (req, res) => {
   }
 });
 
+// Alternar status de Ativo / Desativado (Soft Delete)
+app.patch('/api/usuarios/:id/status', authMiddleware, async (req, res) => {
+  const usuarioId = parseInt(req.params.id, 10);
+  const { ativo } = req.body;
+
+  if (isNaN(usuarioId)) {
+    return res.status(400).json({ erro: 'ID de usuário inválido.' });
+  }
+
+  if (typeof ativo !== 'boolean') {
+    return res.status(400).json({ erro: 'O campo "ativo" deve ser booleano (true ou false).' });
+  }
+
+  try {
+    // Impede alterar o status do Usuário Master
+    const usuarioAlvo = await db.query('SELECT email FROM usuarios WHERE id = $1', [usuarioId]);
+    if (usuarioAlvo.rows.length > 0 && usuarioAlvo.rows[0].email === EMAIL_MASTER) {
+      return res.status(403).json({ erro: 'Este usuário é protegido e não pode ter seu status alterado.' });
+    }
+
+    const query = 'UPDATE usuarios SET ativo = $1 WHERE id = $2 RETURNING id, nome, email, ativo';
+    const resultado = await db.query(query, [ativo, usuarioId]);
+
+    if (resultado.rowCount === 0) {
+      return res.status(404).json({ erro: 'Usuário não encontrado.' });
+    }
+
+    res.json(resultado.rows[0]);
+  } catch (err) {
+    console.error('❌ Erro ao alterar status do usuário:', err);
+    res.status(500).json({ erro: 'Erro interno ao atualizar status do usuário.' });
+  }
+});
+
 // Atualizar usuário existente (Impede edição do usuário Master via API comum)
 app.put('/api/usuarios/:id', authMiddleware, async (req, res) => {
-  const { id } = req.params;
+  const usuarioId = parseInt(req.params.id, 10);
   const { nome, email, senha } = req.body;
+
+  if (isNaN(usuarioId)) {
+    return res.status(400).json({ erro: 'ID de usuário inválido.' });
+  }
 
   try {
     // Verifica se o usuário que está sendo editado é o Master
-    const usuarioAlvo = await db.query('SELECT email FROM usuarios WHERE id = $1', [id]);
+    const usuarioAlvo = await db.query('SELECT email FROM usuarios WHERE id = $1', [usuarioId]);
     if (usuarioAlvo.rows.length > 0 && usuarioAlvo.rows[0].email === EMAIL_MASTER) {
       return res.status(403).json({ erro: 'Este usuário é protegido e não pode ser editado nesta rota.' });
     }
 
     if (senha) {
       const senhaHash = await bcrypt.hash(senha, 10);
-      const query = 'UPDATE usuarios SET nome = $1, email = $2, senha = $3 WHERE id = $4 RETURNING id, nome, email';
-      const atualizado = await db.query(query, [nome, email, senhaHash, id]);
+      const query = 'UPDATE usuarios SET nome = $1, email = $2, senha = $3 WHERE id = $4 RETURNING id, nome, email, COALESCE(ativo, true) AS ativo';
+      const atualizado = await db.query(query, [nome, email, senhaHash, usuarioId]);
       return res.json(atualizado.rows[0]);
     } else {
-      const query = 'UPDATE usuarios SET nome = $1, email = $2 WHERE id = $3 RETURNING id, nome, email';
-      const atualizado = await db.query(query, [nome, email, id]);
+      const query = 'UPDATE usuarios SET nome = $1, email = $2 WHERE id = $3 RETURNING id, nome, email, COALESCE(ativo, true) AS ativo';
+      const atualizado = await db.query(query, [nome, email, usuarioId]);
       return res.json(atualizado.rows[0]);
     }
   } catch (err) {
@@ -122,10 +160,43 @@ app.put('/api/usuarios/:id', authMiddleware, async (req, res) => {
   }
 });
 
+// Excluir usuário permanentemente
+app.delete('/api/usuarios/:id', authMiddleware, async (req, res) => {
+  const usuarioId = parseInt(req.params.id, 10);
+
+  if (isNaN(usuarioId)) {
+    return res.status(400).json({ erro: 'ID de usuário inválido.' });
+  }
+
+  try {
+    // Impede a exclusão do Usuário Master
+    const usuarioAlvo = await db.query('SELECT email FROM usuarios WHERE id = $1', [usuarioId]);
+    if (usuarioAlvo.rows.length > 0 && usuarioAlvo.rows[0].email === EMAIL_MASTER) {
+      return res.status(403).json({ erro: 'Este usuário é protegido e não pode ser excluído.' });
+    }
+
+    const query = 'DELETE FROM usuarios WHERE id = $1 RETURNING id';
+    const resultado = await db.query(query, [usuarioId]);
+
+    if (resultado.rowCount === 0) {
+      return res.status(404).json({ erro: 'Usuário não encontrado.' });
+    }
+
+    res.json({ sucesso: true, mensagem: 'Usuário excluído permanentemente.' });
+  } catch (err) {
+    console.error('❌ Erro ao excluir usuário:', err);
+    res.status(500).json({ erro: 'Erro ao excluir usuário (pode haver lançamentos vinculados a ele).' });
+  }
+});
+
 // --- ROTA DEDICADA PARA ARQUIVAR / DESARQUIVAR CATEGORIA ---
 app.patch('/api/categorias/:id/arquivar', authMiddleware, async (req, res) => {
-  const { id } = req.params;
+  const categoriaId = parseInt(req.params.id, 10);
   const { arquivado } = req.body;
+
+  if (isNaN(categoriaId)) {
+    return res.status(400).json({ erro: 'ID de categoria inválido.' });
+  }
 
   if (typeof arquivado !== 'boolean') {
     return res.status(400).json({ erro: 'O campo "arquivado" deve ser booleano (true ou false).' });
@@ -133,7 +204,7 @@ app.patch('/api/categorias/:id/arquivar', authMiddleware, async (req, res) => {
 
   try {
     const query = 'UPDATE categorias SET arquivado = $1 WHERE id = $2 RETURNING *';
-    const resultado = await db.query(query, [arquivado, id]);
+    const resultado = await db.query(query, [arquivado, categoriaId]);
 
     if (resultado.rowCount === 0) {
       return res.status(404).json({ erro: 'Categoria não encontrada.' });
