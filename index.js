@@ -5,6 +5,9 @@ const bcrypt = require('bcrypt');
 const db = require('./db');
 require('dotenv').config();
 
+// E-mail do usuário Master (definido via .env ou padrão)
+const EMAIL_MASTER = process.env.EMAIL_MASTER || 'systemfinancegb@gmail.com';
+
 // 1. IMPORTAÇÃO DOS MIDDLEWARES E ROTAS
 const authMiddleware = require('./middlewares/authMiddleware');
 const authRoutes = require('./routes/authRoutes');
@@ -61,10 +64,11 @@ app.put('/api/transacoes/replicar-lote', authMiddleware, async (req, res) => {
 
 // --- ROTAS DE GERENCIAMENTO DE USUÁRIOS ---
 
-// Listar todos os usuários
+// Listar todos os usuários (Oculta o usuário Master)
 app.get('/api/usuarios', authMiddleware, async (req, res) => {
   try {
-    const resultado = await db.query('SELECT id, nome, email FROM usuarios ORDER BY id ASC');
+    const query = 'SELECT id, nome, email FROM usuarios WHERE email != $1 ORDER BY id ASC';
+    const resultado = await db.query(query, [EMAIL_MASTER]);
     res.json(resultado.rows);
   } catch (err) {
     console.error('❌ Erro ao buscar usuários:', err);
@@ -90,12 +94,18 @@ app.post('/api/usuarios', authMiddleware, async (req, res) => {
   }
 });
 
-// Atualizar usuário existente
+// Atualizar usuário existente (Impede edição do usuário Master via API comum)
 app.put('/api/usuarios/:id', authMiddleware, async (req, res) => {
   const { id } = req.params;
   const { nome, email, senha } = req.body;
 
   try {
+    // Verifica se o usuário que está sendo editado é o Master
+    const usuarioAlvo = await db.query('SELECT email FROM usuarios WHERE id = $1', [id]);
+    if (usuarioAlvo.rows.length > 0 && usuarioAlvo.rows[0].email === EMAIL_MASTER) {
+      return res.status(403).json({ erro: 'Este usuário é protegido e não pode ser editado nesta rota.' });
+    }
+
     if (senha) {
       const senhaHash = await bcrypt.hash(senha, 10);
       const query = 'UPDATE usuarios SET nome = $1, email = $2, senha = $3 WHERE id = $4 RETURNING id, nome, email';
