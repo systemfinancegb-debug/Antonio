@@ -646,7 +646,6 @@
       <table>
         <thead>
           <tr>
-            <th>ID</th>
             <th>Nome</th>
             <th>E-mail</th>
             <th>Ações</th>
@@ -1698,14 +1697,13 @@
         const lista = Array.isArray(usuarios) ? usuarios : [];
 
         if (lista.length === 0) {
-          tbody.innerHTML = `<tr><td colspan="4" style="text-align: center;">Nenhum usuário encontrado.</td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="3" style="text-align: center;">Nenhum usuário encontrado.</td></tr>`;
           return;
         }
 
         lista.forEach(u => {
           tbody.innerHTML += `
             <tr>
-              <td>${u.id}</td>
               <td>${u.nome}</td>
               <td>${u.email}</td>
               <td>
