@@ -641,7 +641,7 @@
         </div>
       </form>
 
-      <!-- Tabela de Usuários Existentes -->
+      <!-- Tabela de Usuários Cadastrados -->
       <h3>Usuários Cadastrados</h3>
       <table>
         <thead>
@@ -658,7 +658,7 @@
   </div>
 
   <script>
-    const API_BASE = 'https://financeiro-tk6q.onrender.com/api';
+    const API_BASE = 'https://financeiro-backend-antonio.onrender.com/api';
 
     // ESTADO GLOBAL DE DADOS
     let transacoesBrutas = [];
@@ -947,7 +947,7 @@
       }
     }
 
-    // LISTAR CATEGORIAS NO SELECT (CONTINUA EXIBINDO TODAS AS CATEGORIAS PARA PERMITIR LANÇAMENTO E REATIVAÇÃO)
+    // LISTAR CATEGORIAS NO SELECT
     async function carregarCategoriasSelect() {
       try {
         const res = await fetch(`${API_BASE}/categorias`, { headers: getAuthHeaders() });
@@ -965,7 +965,7 @@
       } catch (err) { console.error('Erro ao carregar select de categorias:', err); }
     }
 
-    // LISTAR CATEGORIAS NA TABELA (ABA CATEGORIAS) COM BOTÃO DE ARQUIVAR / DESARQUIVAR
+    // LISTAR CATEGORIAS NA TABELA
     async function carregarCategoriasTabela() {
       try {
         const res = await fetch(`${API_BASE}/categorias`, { headers: getAuthHeaders() });
@@ -1175,7 +1175,6 @@
       const temFiltroAtivo = filterDesc || filterValor || filterDataLanc || filterDataVenc || filterObs || selectedTipos.length > 0 || selectedCats.length > 0;
       document.getElementById('barraAlertaFiltros').style.display = temFiltroAtivo ? 'flex' : 'none';
 
-      // BUSCA O STATUS DAS CATEGORIAS NO MÊS SELECIONADO PARA PINTAR TODAS AS TRANSAÇÕES DELAS CORRETAMENTE
       const mes = document.getElementById('filtroMes').value;
       const ano = document.getElementById('filtroAno').value;
       let categoriasOkIds = [];
@@ -1272,7 +1271,6 @@
 
         const categoriaNome = t.categoria_nome || '-';
 
-        // SE A CATEGORIA ESTIVER MARCADA COMO OK NA ABA DE VENCIMENTOS DO MÊS, TODAS AS TRANSAÇÕES DELA FICAM VERDES. CASO CONTRÁRIO, LARANJA.
         const isCatOk = categoriasOkIds.includes(t.categoria_id);
         const estiloCategoria = isCatOk 
           ? 'color: #27ae60; font-weight: bold;' 
@@ -1302,7 +1300,7 @@
       filtrarEProcessarTabela();
     }
 
-    // PREPARAR E BUSCAR TRANSAÇÕES SEMELHANTES FUTURAS NO BACKEND PARA EXCLUSÃO
+    // PREPARAR EXCLUSÃO EM LOTE
     async function prepararExclusaoEmLote(id) {
       const alvo = transacoesBrutas.find(t => t.id === id);
       if (!alvo) return;
@@ -1394,7 +1392,7 @@
       }
     }
 
-    // CADASTRAR NOVA TRANSAÇÃO (COM TRAVA DE DUPLO CLIQUE)
+    // CADASTRAR NOVA TRANSAÇÃO
     let enviandoTransacao = false;
 
     document.getElementById('formTransacao').addEventListener('submit', async (e) => {
@@ -1437,7 +1435,6 @@
           document.getElementById('data_lancamento').valueAsDate = new Date();
           sugerirCompetenciaVencimento();
           
-          // Recarrega o select das categorias caso uma categoria tenha sido desarquivada via trigger
           await carregarCategoriasSelect();
           trocarAba('consulta');
         } else {
